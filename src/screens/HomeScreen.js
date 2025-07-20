@@ -11,10 +11,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useNavigation } from '@react-navigation/native';
 
 export default function HomeScreen() {
   const { user, userType } = useAuth();
   const { t } = useLanguage();
+  const navigation = useNavigation();
 
   const stats = [
     { label: t('connections'), value: '12', icon: 'people' },
@@ -74,7 +76,16 @@ export default function HomeScreen() {
         <View style={styles.quickActionsContainer}>
           <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
           <View style={styles.quickActionsGrid}>
-            <TouchableOpacity style={styles.quickActionButton}>
+            <TouchableOpacity
+              style={styles.quickActionButton}
+              onPress={() => {
+                if (userType === 'mentor') {
+                  navigation.navigate('MentorDashboard');
+                } else {
+                  navigation.navigate('FindMentors');
+                }
+              }}
+            >
               <Ionicons name="search" size={24} color="white" />
               <Text style={styles.quickActionText}>
                 {userType === 'mentor' ? t('findMentees') : t('findMentors')}

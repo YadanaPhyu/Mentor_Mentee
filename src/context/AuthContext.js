@@ -12,9 +12,13 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [userType, setUserType] = useState(null); // 'mentor' or 'mentee'
+  const [userType, setUserType] = useState(null); // 'admin', 'mentor' or 'mentee'
 
   const login = (userData, type) => {
+    // Special handling for admin login
+    if (userData.email.toLowerCase() === 'admin@example.com') {
+      type = 'admin';
+    }
     setUser(userData);
     setUserType(type);
   };

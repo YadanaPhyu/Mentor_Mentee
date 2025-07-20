@@ -1,38 +1,45 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { AuthProvider } from './src/context/AuthContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { View, Text, ActivityIndicator } from 'react-native';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { LanguageProvider } from './src/context/LanguageContext';
-import AuthScreen from './src/screens/AuthScreen';
-import MainTabNavigator from './src/navigation/MainTabNavigator';
-import { useAuth } from './src/context/AuthContext';
+import AppNavigator from './src/navigation/AppNavigator';
 
-const Stack = createNativeStackNavigator();
-
-function AppNavigator() {
-  const { user } = useAuth();
+function NavigationContent() {
+  const { user, userType } = useAuth();
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {user ? (
-          <Stack.Screen name="Main" component={MainTabNavigator} />
-        ) : (
-          <Stack.Screen name="Auth" component={AuthScreen} />
-        )}
-      </Stack.Navigator>
+    <View style={{ flex: 1 }}>
+      <AppNavigator />
+      <StatusBar style="auto" />
+    </View>
+  );
+}
+
+function AppContent() {
+  return (
+    <NavigationContainer
+      fallback={
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#667eea" />
+        </View>
+      }
+    >
+      <NavigationContent />
     </NavigationContainer>
   );
 }
 
 export default function App() {
   return (
-    <LanguageProvider>
+    <SafeAreaProvider>
       <AuthProvider>
-        <AppNavigator />
-        <StatusBar style="auto" />
+        <LanguageProvider>
+          <AppContent />
+        </LanguageProvider>
       </AuthProvider>
-    </LanguageProvider>
+    </SafeAreaProvider>
   );
 }

@@ -28,14 +28,18 @@ export default function AuthScreen() {
       return;
     }
 
+    // For mentor@example.com, automatically set as mentor
+    const isMentorEmail = email.toLowerCase() === 'mentor@example.com';
+    const type = isMentorEmail ? 'mentor' : (userType || 'mentee');
+
     // Mock authentication
     const userData = {
       id: Math.random().toString(36).substr(2, 9),
       email,
-      name: isLogin ? 'Demo User' : name,
+      name: isLogin ? (isMentorEmail ? 'Mentor User' : 'Demo User') : name,
     };
 
-    login(userData, userType);
+    login(userData, type);
   };
 
   return (

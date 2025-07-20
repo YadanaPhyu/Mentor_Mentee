@@ -75,6 +75,23 @@ const translations = {
     appVersion: 'MentorMyanmar v1.0.0',
     appDescription: 'Connecting mentors and mentees across Myanmar',
     
+    // Admin Dashboard
+    adminDashboard: 'Admin Dashboard',
+    totalUsers: 'Total Users',
+    activeMentors: 'Active Mentors',
+    activeSessions: 'Active Sessions',
+    pendingMentorApprovals: 'Pending Mentor Approvals',
+    manageUsers: 'Manage Users',
+    viewAnalytics: 'View Analytics',
+    reportedIssues: 'Reported Issues',
+    approve: 'Approve',
+    reject: 'Reject',
+    searchUsers: 'Search users...',
+    registeredDate: 'Registered:',
+    edit: 'Edit',
+    activate: 'Activate',
+    deactivate: 'Deactivate',
+    
     // Common
     rating: 'Rating',
     location: 'Location',

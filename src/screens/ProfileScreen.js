@@ -21,17 +21,6 @@ export default function ProfileScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [availableForMentoring, setAvailableForMentoring] = useState(true);
 
-  const handleLogout = () => {
-    Alert.alert(
-      t('logout'),
-      t('logoutConfirm'),
-      [
-        { text: t('cancel'), style: 'cancel' },
-        { text: t('logout'), style: 'destructive', onPress: logout },
-      ]
-    );
-  };
-
   const profileStats = [
     { label: t('connections'), value: '24', icon: 'people' },
     { label: t('sessions'), value: '156', icon: 'time' },
@@ -46,6 +35,29 @@ export default function ProfileScreen() {
     { id: 5, title: t('helpSupport'), icon: 'help-circle-outline', action: () => {} },
     { id: 6, title: t('settings'), icon: 'settings-outline', action: () => {} },
   ];
+
+  const confirmLogout = () => {
+    Alert.alert(
+      'Confirm Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          onPress: () => console.log('Cancel Pressed'),
+          style: 'cancel',
+        },
+        {
+          text: 'Logout',
+          onPress: () => {
+            console.log('Logout Pressed');
+            logout();
+          },
+          style: 'destructive',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -86,6 +98,8 @@ export default function ProfileScreen() {
               <Text style={styles.settingText}>{t('pushNotifications')}</Text>
             </View>
             <Switch
+              accessibilityLabel="Push Notifications Toggle"
+              testID="push-notifications-switch"
               value={notificationsEnabled}
               onValueChange={setNotificationsEnabled}
               trackColor={{ false: '#767577', true: '#667eea' }}
@@ -100,6 +114,8 @@ export default function ProfileScreen() {
                 <Text style={styles.settingText}>{t('availableForMentoring')}</Text>
               </View>
               <Switch
+                accessibilityLabel="Available for Mentoring Toggle"
+                testID="mentoring-availability-switch"
                 value={availableForMentoring}
                 onValueChange={setAvailableForMentoring}
                 trackColor={{ false: '#767577', true: '#667eea' }}
@@ -116,6 +132,8 @@ export default function ProfileScreen() {
               key={item.id}
               style={styles.menuItem}
               onPress={item.action}
+              accessibilityLabel={item.title}
+              testID={`menu-item-${item.id}`}
             >
               <View style={styles.menuLeft}>
                 <Ionicons name={item.icon} size={24} color="#667eea" />
@@ -127,9 +145,18 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.logoutSection}>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={24} color="#FF6B6B" />
-            <Text style={styles.logoutText}>{t('logout')}</Text>
+          <TouchableOpacity 
+            onPress={confirmLogout}
+            style={[
+              styles.logoutButton,
+              { backgroundColor: '#FF6B6B' }
+            ]}
+            accessibilityLabel="Logout button"
+            accessibilityRole="button"
+            testID="logout-button"
+          >
+            <Ionicons name="log-out-outline" size={24} color="white" />
+            <Text style={[styles.logoutText, { color: 'white' }]}>Logout</Text>
           </TouchableOpacity>
         </View>
 
@@ -268,7 +295,11 @@ const styles = StyleSheet.create({
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
+    justifyContent: 'center',
+    backgroundColor: '#FFE5E5',
+    padding: 15,
+    borderRadius: 8,
+    marginVertical: 10,
   },
   logoutText: {
     fontSize: 16,

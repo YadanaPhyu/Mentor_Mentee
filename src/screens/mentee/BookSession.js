@@ -5,14 +5,18 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../../context/LanguageContext';
 
 export default function BookSession({ route, navigation }) {
+  const { mentorId, mentorName, sessionFee } = route.params;
   const { t } = useLanguage();
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
+  const [requestNote, setRequestNote] = useState('');
 
   // Mock available time slots
   const availableSlots = {
@@ -21,8 +25,54 @@ export default function BookSession({ route, navigation }) {
     'Jul 23': ['11:00 AM', '2:00 PM', '5:00 PM'],
   };
 
+  const handleRequestSession = () => {
+    if (!selectedDate || !selectedTime) {
+      Alert.alert('Error', 'Please select both date and time for your session');
+      return;
+    }
+
+    Alert.alert(
+      'Confirm Session Request',
+      `Would you like to request a session with ${mentorName} for ${selectedDate} at ${selectedTime}?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Confirm',
+          onPress: () => {
+            // Here you would typically make an API call to create the session request
+            Alert.alert(
+              'Request Sent',
+              'Your session request has been sent to the mentor. You will be notified once they confirm.',
+              [
+                {
+                  text: 'OK',
+                  onPress: () => navigation.navigate('MentorshipProgress'),
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <ScrollView style={styles.container}>
+      <View style={styles.mentorCard}>
+        <View style={styles.mentorInfo}>
+          <Ionicons name="person-circle" size={50} color="#764ba2" />
+          <View style={styles.mentorDetails}>
+            <Text style={styles.mentorName}>{mentorName}</Text>
+            <Text style={styles.sessionFee}>
+              {sessionFee === 0 ? 'Free Session' : `₱${sessionFee}/session`}
+            </Text>
+          </View>
+        </View>
+      </View>
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('selectDate')}</Text>
         <View style={styles.dateGrid}>
@@ -95,18 +145,48 @@ export default function BookSession({ route, navigation }) {
         </View>
       )}
 
+      {selectedDate && selectedTime && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Message to Mentor (optional)</Text>
+          <View style={styles.detailsCard}>
+            <Text style={styles.detailText}>Add a note for your mentor about your session goals, questions, or anything you'd like to discuss.</Text>
+            <View style={styles.noteInputContainer}>
+              <TextInput
+                style={styles.noteInput}
+                placeholder="Type your message here..."
+                value={requestNote}
+                onChangeText={setRequestNote}
+                multiline
+              />
+            </View>
+          </View>
+        </View>
+      )}
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>{t('paymentNote')}</Text>
+        <View style={styles.paymentInfo}>
+          <Text style={styles.paymentText}>
+            Session fee: {sessionFee === 0 ? 'Free' : `₱${sessionFee}`}
+          </Text>
+          <Text style={styles.paymentSubtext}>
+            Payment will be processed after the mentor confirms your session request.
+          </Text>
+        </View>
+      </View>
+
       <TouchableOpacity
         style={[
-          styles.confirmButton,
+          styles.requestButton,
           (!selectedDate || !selectedTime) && styles.disabledButton,
         ]}
         disabled={!selectedDate || !selectedTime}
-        onPress={() => {
-          // Handle session booking
-          navigation.navigate('MentorshipProgress');
-        }}
+        onPress={handleRequestSession}
       >
-        <Text style={styles.confirmButtonText}>{t('confirmBooking')}</Text>
+        <Text style={styles.requestButtonText}>Request Session</Text>
+        <Text style={styles.requestButtonSubtext}>
+          {sessionFee === 0 ? 'Free Session' : `₱${sessionFee}`}
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -116,6 +196,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  mentorCard: {
+    backgroundColor: 'white',
+    padding: 20,
+    marginBottom: 10,
+  },
+  mentorInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  mentorDetails: {
+    marginLeft: 15,
+    flex: 1,
+  },
+  mentorName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  sessionFee: {
+    fontSize: 16,
+    color: '#667eea',
+    marginTop: 4,
+    fontWeight: '600',
   },
   section: {
     backgroundColor: 'white',
@@ -189,19 +293,50 @@ const styles = StyleSheet.create({
     color: '#333',
     marginLeft: 10,
   },
-  confirmButton: {
+  paymentInfo: {
+    backgroundColor: '#F0F4FF',
+    padding: 15,
+    borderRadius: 8,
+  },
+  paymentText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#667eea',
+    marginBottom: 5,
+  },
+  paymentSubtext: {
+    fontSize: 14,
+    color: '#666',
+  },
+  requestButton: {
     backgroundColor: '#667eea',
     margin: 20,
-    padding: 15,
+    padding: 20,
     borderRadius: 12,
     alignItems: 'center',
   },
   disabledButton: {
     backgroundColor: '#cccccc',
   },
-  confirmButtonText: {
+  requestButtonText: {
     color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  requestButtonSubtext: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 14,
+    marginTop: 4,
+  },
+  noteInputContainer: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  noteInput: {
+    padding: 10,
+    fontSize: 14,
+    minHeight: 40,
+    color: '#333',
   },
 });

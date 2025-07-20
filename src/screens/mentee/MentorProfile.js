@@ -12,13 +12,26 @@ import { useLanguage } from '../../context/LanguageContext';
 
 export default function MentorProfile({ route, navigation }) {
   const { t } = useLanguage();
-  // In a real app, you would get this data from the route params or an API
+  const {
+    mentorId,
+    mentorName,
+    title,
+    company,
+    rating,
+    sessions,
+    skills,
+    location,
+    sessionFee
+  } = route.params;
+
+  // Combine route params with additional mock data
   const mentor = {
-    name: 'John Doe',
-    title: 'Senior Mobile Developer',
-    experience: '8 years',
-    rating: 4.8,
-    totalSessions: 156,
+    name: mentorName,
+    title: title,
+    experience: '8 years', // Mock data
+    rating: rating,
+    totalSessions: sessions,
+    sessionFee: sessionFee,
     skills: ['React Native', 'JavaScript', 'Mobile Development', 'UI/UX'],
     availability: ['Mon', 'Wed', 'Fri'],
     bio: 'Experienced mobile developer passionate about helping others learn and grow in their development journey.',
@@ -48,6 +61,11 @@ export default function MentorProfile({ route, navigation }) {
           <View style={styles.nameContainer}>
             <Text style={styles.name}>{mentor.name}</Text>
             <Text style={styles.title}>{mentor.title}</Text>
+            <View style={styles.feeContainer}>
+              <Text style={styles.feeText}>
+                {mentor.sessionFee === 0 ? 'Free' : `₱${mentor.sessionFee}/session`}
+              </Text>
+            </View>
           </View>
         </View>
         <View style={styles.stats}>
@@ -117,10 +135,19 @@ export default function MentorProfile({ route, navigation }) {
       </View>
 
       <TouchableOpacity
-        style={styles.requestButton}
-        onPress={() => navigation.navigate('BookSession', { mentorId: '1' })}
+        style={styles.bookButton}
+        onPress={() => navigation.navigate('BookSession', { 
+          mentorId: '1',
+          mentorName: mentor.name,
+          sessionFee: mentor.sessionFee
+        })}
       >
-        <Text style={styles.requestButtonText}>{t('requestMentorship')}</Text>
+        <View style={styles.bookButtonContent}>
+          <Text style={styles.bookButtonText}>Book Now</Text>
+          <Text style={styles.bookButtonPrice}>
+            {mentor.sessionFee === 0 ? 'Free Session' : `₱${mentor.sessionFee}/session`}
+          </Text>
+        </View>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -248,16 +275,35 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 20,
   },
-  requestButton: {
+  feeContainer: {
+    backgroundColor: '#F0F4FF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  feeText: {
+    color: '#667eea',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  bookButton: {
     backgroundColor: '#667eea',
     margin: 20,
     padding: 15,
     borderRadius: 12,
+  },
+  bookButtonContent: {
     alignItems: 'center',
   },
-  requestButtonText: {
+  bookButtonText: {
     color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  bookButtonPrice: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 14,
+    marginTop: 4,
   },
 });

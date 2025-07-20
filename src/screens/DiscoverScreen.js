@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
-export default function DiscoverScreen() {
+export default function DiscoverScreen({ navigation }) {
   const { userType } = useAuth();
   const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
@@ -128,11 +128,31 @@ export default function DiscoverScreen() {
               </View>
 
               <View style={styles.actionButtons}>
-                <TouchableOpacity style={styles.viewButton}>
+                <TouchableOpacity 
+                  style={styles.viewButton}
+                  onPress={() => navigation.navigate('MentorProfile', {
+                    mentorId: profile.id,
+                    mentorName: profile.name,
+                    title: profile.title,
+                    company: profile.company,
+                    rating: profile.rating,
+                    sessions: profile.sessions,
+                    skills: profile.skills,
+                    location: profile.location,
+                    sessionFee: 2500 // Mock fee
+                  })}
+                >
                   <Text style={styles.viewButtonText}>{t('viewProfile')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.connectButton}>
-                  <Text style={styles.connectButtonText}>{t('connect')}</Text>
+                <TouchableOpacity 
+                  style={styles.connectButton}
+                  onPress={() => navigation.navigate('BookSession', {
+                    mentorId: profile.id,
+                    mentorName: profile.name,
+                    sessionFee: 2500 // Mock fee
+                  })}
+                >
+                  <Text style={styles.connectButtonText}>Book Now</Text>
                 </TouchableOpacity>
               </View>
             </View>

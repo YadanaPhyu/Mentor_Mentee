@@ -2,9 +2,9 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
-import DiscoverScreen from '../screens/DiscoverScreen';
 import MessagesScreen from '../screens/MessagesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import MenteeStack from './MenteeStack';
 import { useLanguage } from '../context/LanguageContext';
 
 const Tab = createBottomTabNavigator();
@@ -47,6 +47,15 @@ export default function MainTabNavigator() {
         options={{ 
           title: t('home'),
           tabBarLabel: t('home')
+        }}
+      />
+      <Tab.Screen 
+        name="Discover" 
+        component={MenteeStack}
+        options={{ 
+          headerShown: false,
+          title: t('discover'),
+          tabBarLabel: t('discover')
         }}
       />
       <Tab.Screen 

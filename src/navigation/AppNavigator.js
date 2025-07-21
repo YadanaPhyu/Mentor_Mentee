@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
-import MainTabNavigator from './MainTabNavigator';
+import MenteeTabNavigator from './MenteeTabNavigator';
 import MentorStack from './MentorStack';
 import AdminStack from './AdminStack';
 import AuthScreen from '../screens/AuthScreen';
@@ -50,14 +50,25 @@ export default function AppNavigator() {
             gestureEnabled: true
           }}
         />
-      ) : (
+      ) : userType === 'mentee' ? (
         // Mentee Stack
         <Stack.Screen 
           name="MenteeStack" 
-          component={MainTabNavigator} 
+          component={MenteeTabNavigator} 
           options={{
             animationTypeForReplace: 'pop',
+            gestureEnabled: true
           }}
+        />
+      ) : (
+        // Fallback for unknown user type
+        <Stack.Screen 
+          name="Error" 
+          component={() => (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <Text>Invalid user type. Please log out and try again.</Text>
+            </View>
+          )}
         />
       )}
     </Stack.Navigator>

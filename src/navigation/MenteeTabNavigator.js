@@ -1,16 +1,17 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import MentorHomeScreen from '../screens/mentor/MentorHomeScreen';
-import MessagesScreen from '../screens/MessagesScreen';
-import ProfileScreen from '../screens/ProfileScreen';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import HomeScreen from '../screens/HomeScreen';
+import MessagesScreen from '../screens/MessagesScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import MenteeStack from './MenteeStack';
 
 const Tab = createBottomTabNavigator();
 
-export default function MentorStack() {
+export default function MenteeTabNavigator() {
   const { t } = useLanguage();
   const { logout } = useAuth();
 
@@ -20,8 +21,10 @@ export default function MentorStack() {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
 
-          if (route.name === 'Dashboard') {
+          if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Discover') {
+            iconName = focused ? 'search' : 'search-outline';
           } else if (route.name === 'Messages') {
             iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           } else if (route.name === 'Profile') {
@@ -57,24 +60,33 @@ export default function MentorStack() {
         ),
       })}
     >
-      <Tab.Screen
-        name="Dashboard"
-        component={MentorHomeScreen}
+      <Tab.Screen 
+        name="Home" 
+        component={HomeScreen}
         options={{ 
-          title: t('mentorDashboard'),
-          tabBarLabel: t('dashboard')
+          title: t('home'),
+          tabBarLabel: t('home')
         }}
       />
-      <Tab.Screen
-        name="Messages"
+      <Tab.Screen 
+        name="Discover" 
+        component={MenteeStack}
+        options={{ 
+          headerShown: false,
+          title: t('discover'),
+          tabBarLabel: t('discover')
+        }}
+      />
+      <Tab.Screen 
+        name="Messages" 
         component={MessagesScreen}
         options={{ 
           title: t('messages'),
           tabBarLabel: t('messages')
         }}
       />
-      <Tab.Screen
-        name="Profile"
+      <Tab.Screen 
+        name="Profile" 
         component={ProfileScreen}
         options={{ 
           title: t('profile'),

@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import FindMentorsScreen from '../screens/FindMentorsScreen';
+import DiscoverScreen from '../screens/DiscoverScreen';
 import MentorProfile from '../screens/mentee/MentorProfile';
 import BookSession from '../screens/mentee/BookSession';
 import MentorshipProgress from '../screens/mentee/MentorshipProgress';
@@ -22,9 +22,9 @@ export default function MenteeStack() {
       }}
     >
       <Stack.Screen
-        name="FindMentors"
-        component={FindMentorsScreen}
-        options={{ title: 'Find Mentors' }}
+        name="Discover"
+        component={DiscoverScreen}
+        options={{ title: 'Discover Mentors' }}
       />
       <Stack.Screen
         name="MentorProfile"

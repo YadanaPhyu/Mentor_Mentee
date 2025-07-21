@@ -49,7 +49,7 @@ export default function BookSession({ route, navigation }) {
               [
                 {
                   text: 'OK',
-                  onPress: () => navigation.navigate('MentorshipProgress'),
+                  onPress: () => navigation.goBack(),
                 },
               ]
             );

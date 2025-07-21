@@ -82,7 +82,7 @@ export default function HomeScreen() {
                 if (userType === 'mentor') {
                   navigation.navigate('MentorDashboard');
                 } else {
-                  navigation.navigate('FindMentors');
+                  navigation.navigate('Discover');
                 }
               }}
             >
@@ -91,7 +91,10 @@ export default function HomeScreen() {
                 {userType === 'mentor' ? t('findMentees') : t('findMentors')}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.quickActionButton}>
+            <TouchableOpacity 
+              style={styles.quickActionButton}
+              onPress={() => navigation.navigate('Messages')}
+            >
               <Ionicons name="chatbubbles" size={24} color="white" />
               <Text style={styles.quickActionText}>{t('messages')}</Text>
             </TouchableOpacity>

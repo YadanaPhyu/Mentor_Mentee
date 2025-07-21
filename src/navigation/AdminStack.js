@@ -1,11 +1,16 @@
 import React from 'react';
+import { TouchableOpacity } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
 import AdminDashboard from '../screens/admin/AdminDashboard';
 import ManageUsers from '../screens/admin/ManageUsers';
 
 const Stack = createNativeStackNavigator();
 
 export default function AdminStack() {
+  const { logout } = useAuth();
+
   return (
     <Stack.Navigator
       initialRouteName="AdminDashboard"
@@ -17,6 +22,20 @@ export default function AdminStack() {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
+        headerRight: () => (
+          <TouchableOpacity
+            onPress={async () => {
+              await logout();
+            }}
+            style={{ marginRight: 16 }}
+          >
+            <Ionicons 
+              name="log-out-outline" 
+              size={24} 
+              color="#fff"
+            />
+          </TouchableOpacity>
+        ),
       }}
     >
       <Stack.Screen

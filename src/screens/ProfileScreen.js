@@ -31,14 +31,21 @@ export default function ProfileScreen() {
     { label: t('rating'), value: '4.8', icon: 'star' },
   ];
 
-  const menuItems = [
-    { id: 1, title: t('editProfile'), icon: 'person-outline', action: () => {} },
-    { id: 2, title: t('mySkills'), icon: 'bulb-outline', action: () => {} },
-    { id: 3, title: t('availability'), icon: 'calendar-outline', action: () => {} },
-    { id: 4, title: t('paymentBilling'), icon: 'card-outline', action: () => {} },
-    { id: 5, title: t('helpSupport'), icon: 'help-circle-outline', action: () => {} },
-    { id: 6, title: t('settings'), icon: 'settings-outline', action: () => {} },
-  ];
+  const getMenuItems = () => {
+    const commonItems = [
+      { id: 1, title: t('editProfile'), icon: 'person-outline', action: () => {} },
+      { id: 4, title: t('paymentBilling'), icon: 'card-outline', action: () => {} },
+      { id: 5, title: t('helpSupport'), icon: 'help-circle-outline', action: () => {} },
+      { id: 6, title: t('settings'), icon: 'settings-outline', action: () => {} },
+    ];
+
+    const mentorOnlyItems = [
+      { id: 2, title: t('mySkills'), icon: 'bulb-outline', action: () => {} },
+      { id: 3, title: t('availability'), icon: 'calendar-outline', action: () => {} },
+    ];
+
+    return userType === 'mentor' ? [...commonItems, ...mentorOnlyItems] : commonItems;
+  };
 
   // Handle logout function
   const handleLogout = async () => {
@@ -128,7 +135,7 @@ export default function ProfileScreen() {
 
         <View style={styles.menuSection}>
           <Text style={styles.sectionTitle}>{t('account')}</Text>
-          {menuItems.map((item) => (
+          {getMenuItems().map((item) => (
             <TouchableOpacity
               key={item.id}
               style={styles.menuItem}

@@ -33,7 +33,7 @@ export default function ProfileScreen() {
 
   const getMenuItems = () => {
     const commonItems = [
-      { id: 1, title: t('editProfile'), icon: 'person-outline', action: () => {} },
+      { id: 1, title: t('editProfile'), icon: 'person-outline', action: () => navigation.navigate('EditProfile') },
       { id: 4, title: t('paymentBilling'), icon: 'card-outline', action: () => {} },
       { id: 5, title: t('helpSupport'), icon: 'help-circle-outline', action: () => {} },
       { id: 6, title: t('settings'), icon: 'settings-outline', action: () => {} },

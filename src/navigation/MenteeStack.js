@@ -5,6 +5,7 @@ import MentorProfile from '../screens/mentee/MentorProfile';
 import BookSession from '../screens/mentee/BookSession';
 import MentorshipProgress from '../screens/mentee/MentorshipProgress';
 import SessionHistory from '../screens/mentee/SessionHistory';
+import EditProfile from '../screens/EditProfile';
 
 const Stack = createNativeStackNavigator();
 
@@ -45,6 +46,14 @@ export default function MenteeStack() {
         name="SessionHistory"
         component={SessionHistory}
         options={{ title: 'Session History' }}
+      />
+      <Stack.Screen
+        name="EditProfile"
+        component={EditProfile}
+        options={{ 
+          title: 'Edit Profile',
+          headerShown: false // Let the screen handle its own header
+        }}
       />
     </Stack.Navigator>
   );

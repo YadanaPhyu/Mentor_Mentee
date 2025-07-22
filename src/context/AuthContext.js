@@ -67,11 +67,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUser = (updatedUserData) => {
+    try {
+      setUser(updatedUserData);
+      
+      // In real app, would update user data in backend and storage
+      // await updateUserProfile(updatedUserData);
+      // await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
+      
+      return true;
+    } catch (error) {
+      console.error('Update user error:', error);
+      return false;
+    }
+  };
+
   const value = {
     user,
     userType,
     login,
     logout,
+    updateUser,
   };
 
   return (

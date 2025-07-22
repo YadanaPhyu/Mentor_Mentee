@@ -6,7 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import HomeScreen from '../screens/HomeScreen';
 import MessagesScreen from '../screens/MessagesScreen';
-import ProfileScreen from '../screens/ProfileScreen';
+import ProfileStack from './ProfileStack';
 import MenteeStack from './MenteeStack';
 
 const Tab = createBottomTabNavigator();
@@ -85,12 +85,13 @@ export default function MenteeTabNavigator() {
           tabBarLabel: t('messages')
         }}
       />
-      <Tab.Screen 
-        name="Profile" 
-        component={ProfileScreen}
+      <Tab.Screen
+        name="Profile"
+        component={ProfileStack}
         options={{ 
           title: t('profile'),
-          tabBarLabel: t('profile')
+          tabBarLabel: t('profile'),
+          headerShown: false
         }}
       />
     </Tab.Navigator>

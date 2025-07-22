@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import AdminDashboard from '../screens/admin/AdminDashboard';
 import ManageUsers from '../screens/admin/ManageUsers';
+import EditProfile from '../screens/EditProfile';
 
 const Stack = createNativeStackNavigator();
 
@@ -50,6 +51,13 @@ export default function AdminStack() {
         component={ManageUsers}
         options={{
           title: 'Manage Users',
+        }}
+      />
+      <Stack.Screen
+        name="EditProfile"
+        component={EditProfile}
+        options={{
+          title: 'Edit Profile',
         }}
       />
     </Stack.Navigator>

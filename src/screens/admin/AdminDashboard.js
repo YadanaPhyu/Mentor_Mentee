@@ -145,6 +145,17 @@ export default function AdminDashboard({ navigation }) {
           <Ionicons name="chevron-forward" size={20} color="#ccc" />
         </TouchableOpacity>
 
+        <TouchableOpacity 
+          style={styles.menuItem}
+          onPress={() => navigation.navigate('EditProfile')}
+        >
+          <View style={styles.menuLeft}>
+            <Ionicons name="person-outline" size={24} color="#667eea" />
+            <Text style={styles.menuText}>Edit Profile</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#ccc" />
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.menuItem}>
           <View style={styles.menuLeft}>
             <Ionicons name="stats-chart-outline" size={24} color="#667eea" />

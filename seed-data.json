@@ -1,0 +1,76 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "email": "admin@example.com",
+      "password_hash": "YWRtaW4xMjNzYWx0MTIz",
+      "name": "Admin User",
+      "user_type": "admin",
+      "phone": "+1234567890",
+      "bio": "System administrator",
+      "location": "New York, NY",
+      "status": "active",
+      "created_at": "2025-07-25T15:20:55.720Z",
+      "updated_at": "2025-07-25T15:20:55.720Z",
+      "last_login_at": null
+    },
+    {
+      "id": 2,
+      "email": "mentor@example.com",
+      "password_hash": "bWVudG9yMTIzc2FsdDEyMw==",
+      "name": "Jane Mentor",
+      "user_type": "mentor",
+      "phone": "+1234567891",
+      "bio": "Senior Software Engineer with 10+ years experience in full-stack development",
+      "location": "San Francisco, CA",
+      "status": "active",
+      "created_at": "2025-07-25T15:20:55.721Z",
+      "updated_at": "2025-07-25T15:20:55.721Z",
+      "last_login_at": null
+    },
+    {
+      "id": 3,
+      "email": "mentee@example.com",
+      "password_hash": "bWVudGVlMTIzc2FsdDEyMw==",
+      "name": "John Mentee",
+      "user_type": "mentee",
+      "phone": "+1234567892",
+      "bio": "Computer Science student looking to learn web development",
+      "location": "Austin, TX",
+      "status": "active",
+      "created_at": "2025-07-25T15:20:55.721Z",
+      "updated_at": "2025-07-25T15:20:55.721Z",
+      "last_login_at": null
+    },
+    {
+      "id": 4,
+      "email": "sarah.dev@example.com",
+      "password_hash": "cGFzc3dvcmQxMjNzYWx0MTIz",
+      "name": "Sarah Developer",
+      "user_type": "mentor",
+      "phone": "+1234567893",
+      "bio": "Frontend specialist with expertise in React and UI/UX design",
+      "location": "Seattle, WA",
+      "status": "active",
+      "created_at": "2025-07-25T15:20:55.721Z",
+      "updated_at": "2025-07-25T15:20:55.721Z",
+      "last_login_at": null
+    },
+    {
+      "id": 5,
+      "email": "mike.student@example.com",
+      "password_hash": "cGFzc3dvcmQxMjNzYWx0MTIz",
+      "name": "Mike Student",
+      "user_type": "mentee",
+      "phone": "+1234567894",
+      "bio": "Bootcamp graduate seeking guidance in backend development",
+      "location": "Chicago, IL",
+      "status": "active",
+      "created_at": "2025-07-25T15:20:55.721Z",
+      "updated_at": "2025-07-25T15:20:55.721Z",
+      "last_login_at": null
+    }
+  ],
+  "generated_at": "2025-07-25T15:20:55.723Z",
+  "note": "This data represents the seeded users for the mentor-mentee app"
+}

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
-import MenteeTabNavigator from './MenteeTabNavigator';
+import MainTabNavigator from './MainTabNavigator';
 import MentorStack from './MentorStack';
 import AdminStack from './AdminStack';
 import AuthScreen from '../screens/AuthScreen';
@@ -11,6 +11,8 @@ const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
   const { user, userType } = useAuth();
+  
+  console.log('🧭 AppNavigator - user:', user, 'userType:', userType);
 
   return (
     <Stack.Navigator 
@@ -54,7 +56,7 @@ export default function AppNavigator() {
         // Mentee Stack
         <Stack.Screen 
           name="MenteeStack" 
-          component={MenteeTabNavigator} 
+          component={MainTabNavigator} 
           options={{
             animationTypeForReplace: 'pop',
             gestureEnabled: true

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import MessagesScreen from '../screens/MessagesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import DevScreen from '../screens/DevScreen';
 import MenteeStack from './MenteeStack';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -26,6 +27,8 @@ export default function MainTabNavigator() {
             iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
+          } else if (route.name === 'Dev') {
+            iconName = focused ? 'build' : 'build-outline';
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -59,14 +62,6 @@ export default function MainTabNavigator() {
         }}
       />
       <Tab.Screen 
-        name="Discover" 
-        component={DiscoverScreen}
-        options={{ 
-          title: t('discover'),
-          tabBarLabel: t('discover')
-        }}
-      />
-      <Tab.Screen 
         name="Messages" 
         component={MessagesScreen}
         options={{ 
@@ -80,6 +75,14 @@ export default function MainTabNavigator() {
         options={{ 
           title: t('profile'),
           tabBarLabel: t('profile')
+        }}
+      />
+      <Tab.Screen 
+        name="Dev" 
+        component={DevScreen}
+        options={{ 
+          title: 'Dev Tools',
+          tabBarLabel: 'Dev'
         }}
       />
     </Tab.Navigator>

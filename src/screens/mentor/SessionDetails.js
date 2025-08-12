@@ -8,6 +8,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../../context/LanguageContext';
+import VideoCallButton from '../../components/VideoCallButton';
+import MeetingDetails from '../../components/MeetingDetails';
+import VideoCallService from '../../services/videoCallService';
 
 export default function SessionDetails({ route, navigation }) {
   const { t } = useLanguage();
@@ -31,6 +34,13 @@ export default function SessionDetails({ route, navigation }) {
     ],
     notes: 'Focus on practical implementation with examples',
     status: 'upcoming', // upcoming, completed, cancelled
+    // Auto-generate video call for upcoming sessions
+    ...VideoCallService.addMeetingToSession({
+      id: '1',
+      date: 'Jul 21, 2025',
+      time: '10:00 AM',
+      duration: 60,
+    }),
   };
 
   const getStatusColor = (status) => {
@@ -98,8 +108,21 @@ export default function SessionDetails({ route, navigation }) {
         <Text style={styles.notesText}>{session.notes}</Text>
       </View>
 
+      {session.hasVideoCall && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('videoCallDetails')}</Text>
+          <MeetingDetails session={session} />
+        </View>
+      )}
+
       {session.status === 'upcoming' && (
         <View style={styles.actionButtons}>
+          {session.hasVideoCall && (
+            <VideoCallButton 
+              session={session} 
+              style={styles.videoCallButton}
+            />
+          )}
           <TouchableOpacity style={styles.startButton}>
             <Text style={styles.buttonText}>{t('startSession')}</Text>
           </TouchableOpacity>
@@ -202,6 +225,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     padding: 20,
+    flexWrap: 'wrap',
+  },
+  videoCallButton: {
+    width: '100%',
+    marginBottom: 10,
   },
   startButton: {
     backgroundColor: '#667eea',

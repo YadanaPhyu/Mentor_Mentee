@@ -9,6 +9,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import VideoCallButton from '../components/VideoCallButton';
+import VideoCallService from '../services/videoCallService';
 
 export default function MentorDashboard() {
   const { t } = useLanguage();
@@ -20,8 +22,34 @@ export default function MentorDashboard() {
   ];
 
   const upcomingSessions = [
-    { id: 1, mentee: 'Alice Brown', date: '2025-07-22', time: '10:00 AM', topic: 'React Navigation' },
-    { id: 2, mentee: 'Bob Wilson', date: '2025-07-23', time: '2:00 PM', topic: 'State Management' },
+    { 
+      id: 1, 
+      mentee: 'Alice Brown', 
+      date: '2025-07-22', 
+      time: '10:00 AM', 
+      topic: 'React Navigation',
+      duration: 60,
+      ...VideoCallService.addMeetingToSession({
+        id: 1,
+        date: '2025-07-22',
+        time: '10:00 AM',
+        duration: 60,
+      }),
+    },
+    { 
+      id: 2, 
+      mentee: 'Bob Wilson', 
+      date: '2025-07-23', 
+      time: '2:00 PM', 
+      topic: 'State Management',
+      duration: 60,
+      ...VideoCallService.addMeetingToSession({
+        id: 2,
+        date: '2025-07-23',
+        time: '2:00 PM',
+        duration: 60,
+      }),
+    },
   ];
 
   return (
@@ -67,6 +95,14 @@ export default function MentorDashboard() {
               </View>
             </View>
             <Text style={styles.sessionTopic}>{session.topic}</Text>
+            
+            {session.hasVideoCall && (
+              <VideoCallButton 
+                session={session} 
+                style={styles.videoCallButton}
+              />
+            )}
+            
             <TouchableOpacity style={styles.startSessionButton}>
               <Text style={styles.startSessionText}>{t('startSession')}</Text>
             </TouchableOpacity>
@@ -200,6 +236,9 @@ const styles = StyleSheet.create({
   sessionTopic: {
     fontSize: 14,
     color: '#667eea',
+    marginBottom: 10,
+  },
+  videoCallButton: {
     marginBottom: 10,
   },
   startSessionButton: {

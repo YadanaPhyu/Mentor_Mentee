@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../../context/LanguageContext';
+import VideoCallButton from '../../components/VideoCallButton';
+import VideoCallService from '../../services/videoCallService';
 
 export default function SessionHistory({ navigation }) {
   const { t } = useLanguage();
@@ -20,16 +22,23 @@ export default function SessionHistory({ navigation }) {
       mentorName: 'John Doe',
       date: 'Jul 21, 2025',
       time: '2:00 PM',
-      duration: '60 minutes',
+      duration: 60, // changed to number for video call service
       status: 'upcoming',
       topic: 'React Native Development',
+      // Auto-generate video call for upcoming sessions
+      ...VideoCallService.addMeetingToSession({
+        id: '1',
+        date: 'Jul 21, 2025',
+        time: '2:00 PM',
+        duration: 60,
+      }),
     },
     {
       id: '2',
       mentorName: 'Jane Smith',
       date: 'Jul 19, 2025',
       time: '3:00 PM',
-      duration: '60 minutes',
+      duration: 60,
       status: 'completed',
       topic: 'Mobile UI Design',
     },
@@ -38,7 +47,7 @@ export default function SessionHistory({ navigation }) {
       mentorName: 'Mike Johnson',
       date: 'Jul 15, 2025',
       time: '11:00 AM',
-      duration: '30 minutes',
+      duration: 30,
       status: 'completed',
       topic: 'Career Guidance',
     },
@@ -89,22 +98,31 @@ export default function SessionHistory({ navigation }) {
 
       {item.status === 'upcoming' && (
         <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.messageButton]}
-            onPress={() => navigation.navigate('Messages')}
-          >
-            <Ionicons name="chatbubbles-outline" size={20} color="white" />
-            <Text style={styles.actionButtonText}>{t('message')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.cancelButton]}
-            onPress={() => {
-              // Handle cancellation
-            }}
-          >
-            <Ionicons name="close-circle-outline" size={20} color="white" />
-            <Text style={styles.actionButtonText}>{t('cancel')}</Text>
-          </TouchableOpacity>
+          {item.hasVideoCall && (
+            <VideoCallButton 
+              session={item} 
+              style={styles.videoCallButton}
+            />
+          )}
+          
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.messageButton]}
+              onPress={() => navigation.navigate('Messages')}
+            >
+              <Ionicons name="chatbubbles-outline" size={20} color="white" />
+              <Text style={styles.actionButtonText}>{t('message')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.cancelButton]}
+              onPress={() => {
+                // Handle cancellation
+              }}
+            >
+              <Ionicons name="close-circle-outline" size={20} color="white" />
+              <Text style={styles.actionButtonText}>{t('cancel')}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </TouchableOpacity>
@@ -181,9 +199,14 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   actionButtons: {
+    marginTop: 8,
+  },
+  videoCallButton: {
+    marginBottom: 8,
+  },
+  buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
   },
   actionButton: {
     flexDirection: 'row',

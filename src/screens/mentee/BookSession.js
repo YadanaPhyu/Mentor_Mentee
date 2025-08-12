@@ -8,8 +8,10 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../../context/LanguageContext';
+import VideoCallService from '../../services/videoCallService';
 
 export default function BookSession({ route, navigation }) {
   const { mentorId, mentorName, sessionFee } = route.params;
@@ -17,6 +19,27 @@ export default function BookSession({ route, navigation }) {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [requestNote, setRequestNote] = useState('');
+  const [buttonClicked, setButtonClicked] = useState(false);
+  const [sessionCreated, setSessionCreated] = useState(false);
+  const [createdSession, setCreatedSession] = useState(null);
+
+  // Debug logging
+  console.log('BookSession component rendered');
+  console.log('Route params:', route.params);
+  console.log('Mentor ID:', mentorId, 'Name:', mentorName, 'Fee:', sessionFee);
+
+  // Function to copy meeting link to clipboard
+  const copyMeetingLink = async () => {
+    if (createdSession?.videoCall?.meetingUrl) {
+      try {
+        await Clipboard.setStringAsync(createdSession.videoCall.meetingUrl);
+        // Show a brief visual feedback
+        console.log('📋 Meeting link copied to clipboard');
+      } catch (error) {
+        console.error('Failed to copy meeting link:', error);
+      }
+    }
+  };
 
   // Mock available time slots
   const availableSlots = {
@@ -26,42 +49,158 @@ export default function BookSession({ route, navigation }) {
   };
 
   const handleRequestSession = () => {
+    console.log('🚀 Starting session creation process...');
+    
+    // Check if date and time are selected
     if (!selectedDate || !selectedTime) {
-      Alert.alert('Error', 'Please select both date and time for your session');
+      console.log('Missing date or time');
+      setButtonClicked(true);
+      setTimeout(() => setButtonClicked(false), 3000);
       return;
     }
 
-    Alert.alert(
-      'Confirm Session Request',
-      `Would you like to request a session with ${mentorName} for ${selectedDate} at ${selectedTime}?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Confirm',
-          onPress: () => {
-            // Here you would typically make an API call to create the session request
-            Alert.alert(
-              'Request Sent',
-              'Your session request has been sent to the mentor. You will be notified once they confirm.',
-              [
-                {
-                  text: 'OK',
-                  onPress: () => navigation.goBack(),
-                },
-              ]
-            );
-          },
-        },
-      ]
-    );
+    console.log('✅ Form validation passed - creating session...');
+    setButtonClicked(true);
+    
+    // Create session object
+    const newSession = {
+      id: Date.now().toString(),
+      mentorId,
+      mentorName,
+      date: selectedDate,
+      time: selectedTime,
+      duration: 60, // minutes
+      status: 'confirmed',
+      topic: requestNote || 'General mentoring session',
+      fee: sessionFee,
+    };
+
+    console.log('📝 Created session object:', newSession);
+
+    // Auto-generate video call link
+    try {
+      const sessionWithVideoCall = VideoCallService.addMeetingToSession(newSession);
+      console.log('🎥 Video call generated:', sessionWithVideoCall.videoCall);
+
+      // Set the created session to show success screen
+      setCreatedSession(sessionWithVideoCall);
+      setSessionCreated(true);
+      setButtonClicked(false);
+
+    } catch (error) {
+      console.error('❌ Error creating video call:', error);
+      setButtonClicked(false);
+    }
   };
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.mentorCard}>
+      {/* Show success screen if session is created */}
+      {sessionCreated && createdSession ? (
+        <View style={styles.successContainer}>
+          {/* Success Header */}
+          <View style={styles.successHeader}>
+            <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
+            <Text style={styles.successTitle}>Session Confirmed! 🎉</Text>
+            <Text style={styles.successSubtitle}>
+              Your mentoring session has been successfully booked
+            </Text>
+          </View>
+
+          {/* Session Details */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Session Details</Text>
+            <View style={styles.sessionDetailCard}>
+              <View style={styles.detailRow}>
+                <Ionicons name="person" size={24} color="#667eea" />
+                <Text style={styles.detailText}>Mentor: {createdSession.mentorName}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Ionicons name="calendar" size={24} color="#667eea" />
+                <Text style={styles.detailText}>Date: {createdSession.date}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Ionicons name="time" size={24} color="#667eea" />
+                <Text style={styles.detailText}>Time: {createdSession.time}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Ionicons name="hourglass" size={24} color="#667eea" />
+                <Text style={styles.detailText}>Duration: {createdSession.duration} minutes</Text>
+              </View>
+              {createdSession.topic && (
+                <View style={styles.detailRow}>
+                  <Ionicons name="book" size={24} color="#667eea" />
+                  <Text style={styles.detailText}>Topic: {createdSession.topic}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Video Call Section */}
+          {createdSession.hasVideoCall && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                <Ionicons name="videocam" size={20} color="#667eea" /> Video Call Ready
+              </Text>
+              <View style={styles.videoCallCard}>
+                <Text style={styles.videoCallInfo}>
+                  A video meeting room has been automatically created for your session.
+                  You can join the call 15 minutes before the scheduled time.
+                </Text>
+                
+                <View style={styles.meetingLinkContainer}>
+                  <Text style={styles.linkLabel}>Meeting Link:</Text>
+                  <View style={styles.linkRow}>
+                    <TextInput
+                      style={styles.linkInput}
+                      value={createdSession.videoCall.meetingUrl}
+                      editable={false}
+                      selectTextOnFocus={true}
+                    />
+                    <TouchableOpacity
+                      style={styles.copyButton}
+                      onPress={copyMeetingLink}
+                    >
+                      <Ionicons name="copy" size={20} color="white" />
+                      <Text style={styles.copyButtonText}>Copy</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.platformInfo}>
+                  <Ionicons name="information-circle" size={16} color="#666" />
+                  <Text style={styles.platformText}>
+                    Using {createdSession.videoCall.provider === 'jitsi' ? 'Jitsi Meet' : createdSession.videoCall.provider}
+                    {' - No account required, works in any browser'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity
+              style={styles.doneButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="checkmark" size={24} color="white" />
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.shareButton}
+              onPress={copyMeetingLink}
+            >
+              <Ionicons name="share" size={24} color="#667eea" />
+              <Text style={styles.shareButtonText}>Share Link</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        /* Original booking form */
+        <>
+          <View style={styles.mentorCard}>
         <View style={styles.mentorInfo}>
           <Ionicons name="person-circle" size={50} color="#764ba2" />
           <View style={styles.mentorDetails}>
@@ -175,19 +314,56 @@ export default function BookSession({ route, navigation }) {
         </View>
       </View>
 
+      {/* Debug info - can be removed in production */}
+      {!sessionCreated && (
+        <View style={[styles.section, { backgroundColor: '#f0f0f0' }]}>
+          <Text style={styles.sectionTitle}>Debug Info</Text>
+          <Text>Selected Date: {selectedDate || 'None'}</Text>
+          <Text>Selected Time: {selectedTime || 'None'}</Text>
+          <Text>Mentor Name: {mentorName}</Text>
+          <Text>Button Enabled: {selectedDate && selectedTime ? 'YES' : 'NO'}</Text>
+          
+          {/* VISUAL SUCCESS INDICATOR */}
+          {buttonClicked && (
+            <View style={{
+              backgroundColor: '#4CAF50',
+              padding: 15,
+              borderRadius: 10,
+              marginTop: 10,
+              alignItems: 'center',
+            }}>
+              <Text style={{ color: 'white', fontSize: 18, fontWeight: 'bold' }}>
+                ✅ SESSION BEING CREATED! ✅
+              </Text>
+              <Text style={{ color: 'white', fontSize: 14, textAlign: 'center' }}>
+                {selectedDate && selectedTime 
+                  ? `Creating session for ${selectedDate} at ${selectedTime}...`
+                  : 'Please select date and time first!'
+                }
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
       <TouchableOpacity
         style={[
           styles.requestButton,
           (!selectedDate || !selectedTime) && styles.disabledButton,
         ]}
         disabled={!selectedDate || !selectedTime}
-        onPress={handleRequestSession}
+        onPress={() => {
+          console.log('🔴 BUTTON PRESSED - Starting session creation...');
+          handleRequestSession();
+        }}
       >
         <Text style={styles.requestButtonText}>Request Session</Text>
         <Text style={styles.requestButtonSubtext}>
           {sessionFee === 0 ? 'Free Session' : `₱${sessionFee}`}
         </Text>
       </TouchableOpacity>
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -196,6 +372,132 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  successContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  successHeader: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 15,
+    textAlign: 'center',
+  },
+  successSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  sessionDetailCard: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 15,
+  },
+  videoCallCard: {
+    backgroundColor: '#f0f4ff',
+    borderRadius: 12,
+    padding: 15,
+    borderLeftWidth: 4,
+    borderLeftColor: '#667eea',
+  },
+  videoCallInfo: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+    marginBottom: 15,
+  },
+  meetingLinkContainer: {
+    marginBottom: 15,
+  },
+  linkLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  linkInput: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    marginRight: 10,
+    fontSize: 14,
+    color: '#333',
+  },
+  copyButton: {
+    backgroundColor: '#667eea',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  copyButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    marginLeft: 5,
+  },
+  platformInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  platformText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 5,
+    flex: 1,
+  },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    marginTop: 30,
+    gap: 10,
+  },
+  doneButton: {
+    flex: 1,
+    backgroundColor: '#4CAF50',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderRadius: 12,
+  },
+  doneButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  shareButton: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderWidth: 2,
+    borderColor: '#667eea',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderRadius: 12,
+  },
+  shareButtonText: {
+    color: '#667eea',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
   mentorCard: {
     backgroundColor: 'white',

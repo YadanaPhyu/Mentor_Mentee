@@ -8,20 +8,31 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../../context/LanguageContext';
+import VideoCallButton from '../../components/VideoCallButton';
+import MeetingDetails from '../../components/MeetingDetails';
+import VideoCallService from '../../services/videoCallService';
 
 export default function MentorshipProgress({ route, navigation }) {
   const { t } = useLanguage();
 
   // Mock session data - in a real app, this would come from props or API
   const sessionData = {
+    id: '1',
     date: 'Jul 21',
     time: '2:00 PM',
-    duration: '60 minutes',
+    duration: 60, // changed to number for video call service
     status: 'confirmed',
     mentor: {
       name: 'John Doe',
       expertise: 'React Native Development',
     },
+    // Auto-generate video call for confirmed sessions
+    ...VideoCallService.addMeetingToSession({
+      id: '1',
+      date: 'Jul 21',
+      time: '2:00 PM',
+      duration: 60,
+    }),
   };
 
   const renderStatusIcon = () => {
@@ -74,25 +85,41 @@ export default function MentorshipProgress({ route, navigation }) {
         </View>
       </View>
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => navigation.navigate('Messages')}
-        >
-          <Ionicons name="chatbubbles-outline" size={24} color="white" />
-          <Text style={styles.buttonText}>{t('messageNow')}</Text>
-        </TouchableOpacity>
+      {sessionData.hasVideoCall && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>{t('videoCallDetails')}</Text>
+          <MeetingDetails session={sessionData} />
+        </View>
+      )}
 
-        <TouchableOpacity
-          style={[styles.actionButton, styles.cancelButton]}
-          onPress={() => {
-            // Handle session cancellation
-            navigation.goBack();
-          }}
-        >
-          <Ionicons name="close-circle-outline" size={24} color="white" />
-          <Text style={styles.buttonText}>{t('cancelSession')}</Text>
-        </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        {sessionData.hasVideoCall && (
+          <VideoCallButton 
+            session={sessionData} 
+            style={styles.videoCallButton}
+          />
+        )}
+        
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => navigation.navigate('Messages')}
+          >
+            <Ionicons name="chatbubbles-outline" size={24} color="white" />
+            <Text style={styles.buttonText}>{t('messageNow')}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.cancelButton]}
+            onPress={() => {
+              // Handle session cancellation
+              navigation.goBack();
+            }}
+          >
+            <Ionicons name="close-circle-outline" size={24} color="white" />
+            <Text style={styles.buttonText}>{t('cancelSession')}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </ScrollView>
   );
@@ -138,6 +165,12 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     padding: 20,
+  },
+  videoCallButton: {
+    marginBottom: 15,
+  },
+  actionRow: {
+    flexDirection: 'column',
   },
   actionButton: {
     backgroundColor: '#667eea',

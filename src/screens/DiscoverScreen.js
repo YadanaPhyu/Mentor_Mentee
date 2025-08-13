@@ -3,12 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   TextInput,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -89,6 +89,31 @@ export default function DiscoverScreen({ navigation }) {
       </View>
 
       <ScrollView style={styles.content}>
+        {/* AI Career Development Section */}
+        <View style={styles.careerSection}>
+          <Text style={styles.sectionTitle}>🤖 AI Career Development</Text>
+          <TouchableOpacity 
+            style={styles.careerCard}
+            onPress={() => navigation.navigate('CareerGoalIntake')}
+          >
+            <View style={styles.careerHeader}>
+              <Ionicons name="cpu" size={28} color="#667eea" />
+              <View style={styles.careerContent}>
+                <Text style={styles.careerTitle}>AI-Powered Career Roadmap</Text>
+                <Text style={styles.careerSubtitle}>
+                  Get a personalized 8-week learning plan for ANY career path using AI!
+                </Text>
+                <View style={styles.aiFeatures}>
+                  <Text style={styles.aiFeature}>🎯 Skill gap analysis</Text>
+                  <Text style={styles.aiFeature}>📚 Personalized resources</Text>
+                  <Text style={styles.aiFeature}>🚀 Weekly action plans</Text>
+                </View>
+              </View>
+              <Ionicons name="arrow-forward" size={20} color="#667eea" />
+            </View>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.profilesContainer}>
           {filteredProfiles.map((profile) => (
             <View key={profile.id} style={styles.profileCard}>
@@ -339,5 +364,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     marginTop: 5,
+  },
+  // Career Development Styles
+  careerSection: {
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+  },
+  careerCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#667eea',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  careerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  careerContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  careerTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  careerSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  aiFeatures: {
+    marginTop: 8,
+  },
+  aiFeature: {
+    fontSize: 12,
+    color: '#667eea',
+    marginBottom: 2,
+    fontWeight: '500',
   },
 });

@@ -12,6 +12,9 @@ import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../../context/LanguageContext';
 import VideoCallService from '../../services/videoCallService';
+import EmailService from '../../services/emailService';
+import EmailPreview from '../../components/EmailPreview';
+import EmailTestUtils from '../../utils/emailTestUtils';
 
 export default function BookSession({ route, navigation }) {
   const { mentorId, mentorName, sessionFee } = route.params;
@@ -22,6 +25,9 @@ export default function BookSession({ route, navigation }) {
   const [buttonClicked, setButtonClicked] = useState(false);
   const [sessionCreated, setSessionCreated] = useState(false);
   const [createdSession, setCreatedSession] = useState(null);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
 
   // Debug logging
   console.log('BookSession component rendered');
@@ -48,7 +54,7 @@ export default function BookSession({ route, navigation }) {
     'Jul 23': ['11:00 AM', '2:00 PM', '5:00 PM'],
   };
 
-  const handleRequestSession = () => {
+  const handleRequestSession = async () => {
     console.log('🚀 Starting session creation process...');
     
     // Check if date and time are selected
@@ -87,9 +93,51 @@ export default function BookSession({ route, navigation }) {
       setSessionCreated(true);
       setButtonClicked(false);
 
+      // Send confirmation email
+      sendConfirmationEmail(sessionWithVideoCall);
+
     } catch (error) {
       console.error('❌ Error creating video call:', error);
       setButtonClicked(false);
+    }
+  };
+
+  // Function to send confirmation email
+  const sendConfirmationEmail = async (session) => {
+    console.log('📧 Preparing to send confirmation email...');
+    setEmailSending(true);
+
+    try {
+      // In a real app, you would get these from user profiles or authentication context
+      const mentorEmail = 'mentor@example.com'; // Replace with actual mentor email
+      const menteeEmail = 'mentee@example.com'; // Replace with actual mentee email
+
+      const emailSent = await EmailService.sendSessionConfirmationEmail(
+        session,
+        mentorEmail,
+        menteeEmail
+      );
+
+      if (emailSent) {
+        console.log('✅ Confirmation email sent successfully!');
+        setEmailSent(true);
+      } else {
+        console.log('📧 Email sending was cancelled or failed');
+      }
+    } catch (error) {
+      console.error('❌ Error sending confirmation email:', error);
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
+  // Development test function for email functionality
+  const testEmailFeature = async () => {
+    console.log('🧪 Testing email feature...');
+    try {
+      await EmailTestUtils.testEmailService();
+    } catch (error) {
+      console.error('🧪 Email test failed:', error);
     }
   };
 
@@ -177,6 +225,61 @@ export default function BookSession({ route, navigation }) {
               </View>
             </View>
           )}
+
+          {/* Email Status Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              <Ionicons name="mail" size={20} color="#667eea" /> Email Confirmation
+            </Text>
+            <View style={styles.emailStatusCard}>
+              {emailSending ? (
+                <View style={styles.emailSendingRow}>
+                  <Ionicons name="sync" size={24} color="#ffa726" />
+                  <Text style={styles.emailSendingText}>Sending confirmation email...</Text>
+                </View>
+              ) : emailSent ? (
+                <View style={styles.emailSuccessRow}>
+                  <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                  <Text style={styles.emailSuccessText}>
+                    Confirmation email sent! Check your inbox for session details and meeting link.
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.emailPendingRow}>
+                  <Ionicons name="time" size={24} color="#ffa726" />
+                  <Text style={styles.emailPendingText}>
+                    Preparing to send confirmation email...
+                  </Text>
+                </View>
+              )}
+              
+              <Text style={styles.emailNote}>
+                📧 Both you and your mentor will receive a detailed email with session information and the video meeting link.
+              </Text>
+
+              {/* Resend Email Button */}
+              {emailSent && (
+                <View style={styles.emailActionButtons}>
+                  <TouchableOpacity
+                    style={styles.previewEmailButton}
+                    onPress={() => setShowEmailPreview(true)}
+                  >
+                    <Ionicons name="eye" size={18} color="#667eea" />
+                    <Text style={styles.previewEmailText}>Preview Email</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={styles.resendEmailButton}
+                    onPress={() => sendConfirmationEmail(createdSession)}
+                    disabled={emailSending}
+                  >
+                    <Ionicons name="refresh" size={18} color="#667eea" />
+                    <Text style={styles.resendEmailText}>Send Again</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </View>
 
           {/* Action Buttons */}
           <View style={styles.actionButtonsContainer}>
@@ -364,6 +467,13 @@ export default function BookSession({ route, navigation }) {
       </TouchableOpacity>
         </>
       )}
+
+      {/* Email Preview Modal */}
+      <EmailPreview
+        visible={showEmailPreview}
+        onClose={() => setShowEmailPreview(false)}
+        session={createdSession}
+      />
     </ScrollView>
   );
 }
@@ -640,5 +750,97 @@ const styles = StyleSheet.create({
     fontSize: 14,
     minHeight: 40,
     color: '#333',
+  },
+
+  // Email Status Styles
+  emailStatusCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    marginTop: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: '#667eea',
+  },
+  emailSendingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  emailSuccessRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  emailPendingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  emailSendingText: {
+    fontSize: 16,
+    color: '#ffa726',
+    marginLeft: 10,
+    fontWeight: '600',
+  },
+  emailSuccessText: {
+    fontSize: 16,
+    color: '#4CAF50',
+    marginLeft: 10,
+    fontWeight: '600',
+    flex: 1,
+  },
+  emailPendingText: {
+    fontSize: 16,
+    color: '#ffa726',
+    marginLeft: 10,
+    fontWeight: '600',
+  },
+  emailNote: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+    marginTop: 10,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  emailActionButtons: {
+    flexDirection: 'row',
+    marginTop: 15,
+    gap: 10,
+  },
+  previewEmailButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8f9ff',
+    borderWidth: 1,
+    borderColor: '#667eea',
+    borderRadius: 8,
+    padding: 12,
+  },
+  previewEmailText: {
+    color: '#667eea',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 5,
+  },
+  resendEmailButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8f9ff',
+    borderWidth: 1,
+    borderColor: '#667eea',
+    borderRadius: 8,
+    padding: 12,
+  },
+  resendEmailText: {
+    color: '#667eea',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 5,
   },
 });

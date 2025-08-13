@@ -121,6 +121,45 @@ export default function MentorshipProgress({ route, navigation }) {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Career Map Integration */}
+      <View style={styles.careerSection}>
+        <Text style={styles.sectionTitle}>Career Development</Text>
+        <TouchableOpacity 
+          style={styles.careerMapCard}
+          onPress={() => navigation.navigate('CareerGoalIntake')}
+        >
+          <View style={styles.careerMapHeader}>
+            <Ionicons name="map" size={28} color="#667eea" />
+            <View style={styles.careerMapContent}>
+              <Text style={styles.careerMapTitle}>Your Learning Path</Text>
+              <Text style={styles.careerMapSubtitle}>
+                Track progress on your 8-week career plan
+              </Text>
+            </View>
+            <View style={styles.progressBadge}>
+              <Text style={styles.progressText}>65%</Text>
+            </View>
+          </View>
+          
+          <View style={styles.careerActions}>
+            <TouchableOpacity 
+              style={styles.careerActionButton}
+              onPress={() => navigation.navigate('ProgressTracker')}
+            >
+              <Ionicons name="checkmark-circle" size={18} color="#667eea" />
+              <Text style={styles.careerActionText}>Track Progress</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.careerActionButton}
+              onPress={() => navigation.navigate('MentorReview')}
+            >
+              <Ionicons name="people" size={18} color="#667eea" />
+              <Text style={styles.careerActionText}>Get Review</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
@@ -189,5 +228,75 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 10,
+  },
+  // Career Map Styles
+  careerSection: {
+    backgroundColor: 'white',
+    padding: 20,
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+  },
+  careerMapCard: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#667eea',
+  },
+  careerMapHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  careerMapContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  careerMapTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  careerMapSubtitle: {
+    fontSize: 14,
+    color: '#666',
+  },
+  progressBadge: {
+    backgroundColor: '#667eea',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  progressText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'white',
+  },
+  careerActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  careerActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#667eea',
+    flex: 0.48,
+  },
+  careerActionText: {
+    fontSize: 14,
+    color: '#667eea',
+    fontWeight: '500',
+    marginLeft: 6,
   },
 });

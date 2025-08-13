@@ -6,6 +6,7 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -60,6 +61,47 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {/* Career Map Section for Mentees */}
+        {userType === 'mentee' && (
+          <View style={styles.careerMapContainer}>
+            <Text style={styles.sectionTitle}>Career Development</Text>
+            <TouchableOpacity 
+              style={styles.careerMapCard}
+              onPress={() => navigation.navigate('CareerGoalIntake')}
+            >
+              <View style={styles.careerMapHeader}>
+                <Ionicons name="map" size={32} color="#667eea" />
+                <View style={styles.careerMapContent}>
+                  <Text style={styles.careerMapTitle}>Build Your Career Roadmap</Text>
+                  <Text style={styles.careerMapSubtitle}>
+                    Get a personalized 8-week learning plan tailored to your goals
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={styles.careerMapFeatures}>
+                <View style={styles.feature}>
+                  <Ionicons name="analytics" size={16} color="#667eea" />
+                  <Text style={styles.featureText}>Skill Gap Analysis</Text>
+                </View>
+                <View style={styles.feature}>
+                  <Ionicons name="calendar" size={16} color="#667eea" />
+                  <Text style={styles.featureText}>Weekly Goals</Text>
+                </View>
+                <View style={styles.feature}>
+                  <Ionicons name="trophy" size={16} color="#667eea" />
+                  <Text style={styles.featureText}>Portfolio Project</Text>
+                </View>
+              </View>
+              
+              <View style={styles.careerMapAction}>
+                <Text style={styles.careerMapActionText}>Start Assessment</Text>
+                <Ionicons name="arrow-forward" size={20} color="#667eea" />
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.activityContainer}>
           <Text style={styles.sectionTitle}>{t('recentActivity')}</Text>
           {recentActivities.map((activity) => (
@@ -82,7 +124,8 @@ export default function HomeScreen() {
                 if (userType === 'mentor') {
                   navigation.navigate('MentorDashboard');
                 } else {
-                  navigation.navigate('Discover');
+                  // Navigate to the Discover tab which contains the MenteeStack
+                  navigation.navigate('Discover', { screen: 'DiscoverMentors' });
                 }
               }}
             >
@@ -98,6 +141,15 @@ export default function HomeScreen() {
               <Ionicons name="chatbubbles" size={24} color="white" />
               <Text style={styles.quickActionText}>{t('messages')}</Text>
             </TouchableOpacity>
+            {userType === 'mentee' && (
+              <TouchableOpacity 
+                style={styles.quickActionButton}
+                onPress={() => navigation.navigate('CareerGoalIntake')}
+              >
+                <Ionicons name="map" size={24} color="white" />
+                <Text style={styles.quickActionText}>Career Plan</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -228,5 +280,71 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 8,
     textAlign: 'center',
+  },
+  // Career Map Styles
+  careerMapContainer: {
+    marginBottom: 30,
+  },
+  careerMapCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#667eea',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  careerMapHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 15,
+  },
+  careerMapContent: {
+    flex: 1,
+    marginLeft: 15,
+  },
+  careerMapTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+  },
+  careerMapSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  careerMapFeatures: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 15,
+  },
+  feature: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 20,
+    marginBottom: 8,
+  },
+  featureText: {
+    fontSize: 14,
+    color: '#667eea',
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  careerMapAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  careerMapActionText: {
+    fontSize: 16,
+    color: '#667eea',
+    fontWeight: '600',
   },
 });

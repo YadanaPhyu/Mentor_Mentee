@@ -5,6 +5,8 @@ import HomeScreen from '../screens/HomeScreen';
 import MessagesScreen from '../screens/MessagesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import MenteeStack from './MenteeStack';
+import EmailTestScreen from '../screens/EmailTestScreen';
+import SimpleDiscoverScreen from '../screens/SimpleDiscoverScreen';
 import { useLanguage } from '../context/LanguageContext';
 
 const Tab = createBottomTabNavigator();
@@ -26,6 +28,8 @@ export default function MainTabNavigator() {
             iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
+          } else if (route.name === 'EmailTest') {
+            iconName = focused ? 'mail' : 'mail-outline';
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -59,14 +63,6 @@ export default function MainTabNavigator() {
         }}
       />
       <Tab.Screen 
-        name="Discover" 
-        component={DiscoverScreen}
-        options={{ 
-          title: t('discover'),
-          tabBarLabel: t('discover')
-        }}
-      />
-      <Tab.Screen 
         name="Messages" 
         component={MessagesScreen}
         options={{ 
@@ -80,6 +76,14 @@ export default function MainTabNavigator() {
         options={{ 
           title: t('profile'),
           tabBarLabel: t('profile')
+        }}
+      />
+      <Tab.Screen 
+        name="EmailTest" 
+        component={EmailTestScreen}
+        options={{ 
+          title: '📧 Email Test',
+          tabBarLabel: 'Email Test'
         }}
       />
     </Tab.Navigator>

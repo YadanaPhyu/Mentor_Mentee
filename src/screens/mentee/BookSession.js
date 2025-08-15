@@ -28,6 +28,10 @@ export default function BookSession({ route, navigation }) {
   const [emailSent, setEmailSent] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
   const [showEmailPreview, setShowEmailPreview] = useState(false);
+  
+  // New states for mentor confirmation flow
+  const [sessionStatus, setSessionStatus] = useState('booking'); // 'booking', 'pending', 'confirmed', 'rejected'
+  const [bookingRequest, setBookingRequest] = useState(null);
 
   // Debug logging
   console.log('BookSession component rendered');
@@ -55,7 +59,7 @@ export default function BookSession({ route, navigation }) {
   };
 
   const handleRequestSession = async () => {
-    console.log('🚀 Starting session creation process...');
+    console.log('🚀 Starting session request process...');
     
     // Check if date and time are selected
     if (!selectedDate || !selectedTime) {
@@ -65,44 +69,114 @@ export default function BookSession({ route, navigation }) {
       return;
     }
 
-    console.log('✅ Form validation passed - creating session...');
+    console.log('✅ Form validation passed - creating session request...');
     setButtonClicked(true);
     
-    // Create session object
-    const newSession = {
+    // Create session request object (pending mentor approval)
+    const newBookingRequest = {
       id: Date.now().toString(),
       mentorId,
       mentorName,
+      menteeName: 'Current User', // Replace with actual mentee name from auth context
       date: selectedDate,
       time: selectedTime,
       duration: 60, // minutes
-      status: 'confirmed',
+      status: 'pending_mentor_approval',
       topic: requestNote || 'General mentoring session',
       fee: sessionFee,
+      requestedAt: new Date().toISOString(),
+      hasVideoCall: false, // Will be set to true only after mentor confirmation
+      emailNotificationSent: false
     };
 
-    console.log('📝 Created session object:', newSession);
+    console.log('📝 Created booking request:', newBookingRequest);
 
-    // Auto-generate video call link
     try {
-      const sessionWithVideoCall = VideoCallService.addMeetingToSession(newSession);
-      console.log('🎥 Video call generated:', sessionWithVideoCall.videoCall);
-
-      // Set the created session to show success screen
-      setCreatedSession(sessionWithVideoCall);
-      setSessionCreated(true);
+      // Save the booking request (in real app, this would be sent to backend)
+      setBookingRequest(newBookingRequest);
+      setSessionStatus('pending');
       setButtonClicked(false);
 
-      // Send confirmation email
-      sendConfirmationEmail(sessionWithVideoCall);
+      // Send notification to mentor (not confirmation email yet)
+      sendMentorNotification(newBookingRequest);
+
+      console.log('✅ Session request sent to mentor for approval');
 
     } catch (error) {
-      console.error('❌ Error creating video call:', error);
+      console.error('❌ Error creating session request:', error);
       setButtonClicked(false);
     }
   };
 
-  // Function to send confirmation email
+  // Function to send notification to mentor about the booking request
+  const sendMentorNotification = async (request) => {
+    console.log('📧 Sending booking request notification to mentor...');
+    
+    try {
+      // In real app, send notification to mentor via API
+      const mentorEmail = 'mentor@example.com'; // Replace with actual mentor email
+      
+      // For demo purposes, simulate mentor response after 3 seconds
+      setTimeout(() => {
+        simulateMentorResponse(request);
+      }, 3000);
+      
+      console.log('✅ Mentor notification sent');
+    } catch (error) {
+      console.error('❌ Error sending mentor notification:', error);
+    }
+  };
+
+  // Function to simulate mentor confirmation (for demo purposes)
+  const simulateMentorResponse = (request) => {
+    console.log('🤖 Simulating mentor response...');
+    
+    // In real app, this would come from mentor's action via API
+    const mentorConfirmed = true; // Simulate approval (in real app, this comes from mentor's decision)
+    
+    if (mentorConfirmed) {
+      handleMentorConfirmation(request);
+    } else {
+      handleMentorRejection(request);
+    }
+  };
+
+  // Function to handle mentor confirmation
+  const handleMentorConfirmation = async (request) => {
+    console.log('✅ Mentor confirmed the session!');
+    
+    // Update request to confirmed session with video call
+    const confirmedSession = {
+      ...request,
+      status: 'confirmed',
+      confirmedAt: new Date().toISOString(),
+      hasVideoCall: true
+    };
+
+    try {
+      // Generate video call link only after mentor confirmation
+      const sessionWithVideoCall = VideoCallService.addMeetingToSession(confirmedSession);
+      console.log('🎥 Video call generated after mentor confirmation:', sessionWithVideoCall.videoCall);
+
+      // Update states to show confirmed session
+      setCreatedSession(sessionWithVideoCall);
+      setSessionStatus('confirmed');
+      setSessionCreated(true);
+
+      // Send confirmation email with meeting link
+      sendConfirmationEmail(sessionWithVideoCall);
+
+    } catch (error) {
+      console.error('❌ Error generating video call:', error);
+    }
+  };
+
+  // Function to handle mentor rejection
+  const handleMentorRejection = (request) => {
+    console.log('❌ Mentor rejected the session');
+    setSessionStatus('rejected');
+    // In real app, notify mentee about rejection and suggest alternative times
+  };
   const sendConfirmationEmail = async (session) => {
     console.log('📧 Preparing to send confirmation email...');
     setEmailSending(true);
@@ -143,8 +217,130 @@ export default function BookSession({ route, navigation }) {
 
   return (
     <ScrollView style={styles.container}>
-      {/* Show success screen if session is created */}
-      {sessionCreated && createdSession ? (
+      {/* Show different screens based on session status */}
+      
+      {/* Pending Mentor Approval Screen */}
+      {sessionStatus === 'pending' && bookingRequest ? (
+        <View style={styles.pendingContainer}>
+          <View style={styles.pendingHeader}>
+            <Ionicons name="hourglass" size={80} color="#ffa726" />
+            <Text style={styles.pendingTitle}>Request Sent! ⏳</Text>
+            <Text style={styles.pendingSubtitle}>
+              Waiting for {mentorName} to confirm your session
+            </Text>
+          </View>
+
+          {/* Request Details */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Request Details</Text>
+            <View style={styles.sessionDetailCard}>
+              <View style={styles.detailRow}>
+                <Ionicons name="person" size={24} color="#667eea" />
+                <Text style={styles.detailText}>Mentor: {bookingRequest.mentorName}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Ionicons name="calendar" size={24} color="#667eea" />
+                <Text style={styles.detailText}>Requested Date: {bookingRequest.date}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Ionicons name="time" size={24} color="#667eea" />
+                <Text style={styles.detailText}>Requested Time: {bookingRequest.time}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Ionicons name="hourglass" size={24} color="#667eea" />
+                <Text style={styles.detailText}>Duration: {bookingRequest.duration} minutes</Text>
+              </View>
+              {bookingRequest.topic && (
+                <View style={styles.detailRow}>
+                  <Ionicons name="book" size={24} color="#667eea" />
+                  <Text style={styles.detailText}>Topic: {bookingRequest.topic}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Status Information */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              <Ionicons name="information-circle" size={20} color="#ffa726" /> What's Next?
+            </Text>
+            <View style={styles.statusCard}>
+              <Text style={styles.statusText}>
+                📨 Your mentor has been notified about your session request
+              </Text>
+              <Text style={styles.statusText}>
+                ⏰ You'll receive a confirmation email once they approve
+              </Text>
+              <Text style={styles.statusText}>
+                🎥 Meeting link will be generated only after confirmation
+              </Text>
+              <Text style={styles.statusText}>
+                📧 Both you and your mentor will get session details via email
+              </Text>
+            </View>
+          </View>
+
+          {/* Cancel Request Button */}
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => {
+                setSessionStatus('booking');
+                setBookingRequest(null);
+              }}
+            >
+              <Ionicons name="close" size={24} color="#e53e3e" />
+              <Text style={styles.cancelButtonText}>Cancel Request</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : 
+      
+      /* Mentor Rejected Screen */
+      sessionStatus === 'rejected' ? (
+        <View style={styles.rejectedContainer}>
+          <View style={styles.rejectedHeader}>
+            <Ionicons name="close-circle" size={80} color="#e53e3e" />
+            <Text style={styles.rejectedTitle}>Request Not Available</Text>
+            <Text style={styles.rejectedSubtitle}>
+              The mentor is not available at your requested time
+            </Text>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Suggested Actions</Text>
+            <View style={styles.suggestionCard}>
+              <Text style={styles.suggestionText}>
+                • Try selecting a different time slot
+              </Text>
+              <Text style={styles.suggestionText}>
+                • Check mentor's availability calendar
+              </Text>
+              <Text style={styles.suggestionText}>
+                • Consider booking for next week
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity
+              style={styles.tryAgainButton}
+              onPress={() => {
+                setSessionStatus('booking');
+                setBookingRequest(null);
+                setSelectedDate(null);
+                setSelectedTime(null);
+              }}
+            >
+              <Ionicons name="refresh" size={24} color="#667eea" />
+              <Text style={styles.tryAgainButtonText}>Try Different Time</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : 
+      
+      /* Confirmed Session Screen */
+      sessionStatus === 'confirmed' && sessionCreated && createdSession ? (
         <View style={styles.successContainer}>
           {/* Success Header */}
           <View style={styles.successHeader}>
@@ -462,7 +658,7 @@ export default function BookSession({ route, navigation }) {
       >
         <Text style={styles.requestButtonText}>Request Session</Text>
         <Text style={styles.requestButtonSubtext}>
-          {sessionFee === 0 ? 'Free Session' : `₱${sessionFee}`}
+          {sessionFee === 0 ? 'Pending mentor approval' : `₱${sessionFee} - Pending approval`}
         </Text>
       </TouchableOpacity>
         </>
@@ -842,5 +1038,108 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 5,
+  },
+  // New styles for pending and rejected states
+  pendingContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  pendingHeader: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  pendingTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 15,
+    textAlign: 'center',
+  },
+  pendingSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  statusCard: {
+    backgroundColor: '#fff8e1',
+    borderRadius: 12,
+    padding: 15,
+    borderLeftWidth: 4,
+    borderLeftColor: '#ffa726',
+  },
+  statusText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  cancelButton: {
+    backgroundColor: 'white',
+    borderWidth: 2,
+    borderColor: '#e53e3e',
+    borderRadius: 12,
+    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButtonText: {
+    color: '#e53e3e',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  rejectedContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  rejectedHeader: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  rejectedTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 15,
+    textAlign: 'center',
+  },
+  rejectedSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  suggestionCard: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 15,
+  },
+  suggestionText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  tryAgainButton: {
+    backgroundColor: '#667eea',
+    borderRadius: 12,
+    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tryAgainButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });

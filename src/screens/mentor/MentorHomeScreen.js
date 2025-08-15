@@ -124,6 +124,31 @@ export default function MentorHomeScreen({ navigation }) {
         />
       </View>
 
+      {/* Session Booking Requests Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Session Booking Requests</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('SessionBookingRequests')}>
+            <Text style={styles.viewAllText}>View All</Text>
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity 
+          style={styles.quickAccessCard}
+          onPress={() => navigation.navigate('SessionBookingRequests')}
+        >
+          <View style={styles.quickAccessContent}>
+            <Ionicons name="calendar-outline" size={32} color="#667eea" />
+            <View style={styles.quickAccessText}>
+              <Text style={styles.quickAccessTitle}>Manage Session Requests</Text>
+              <Text style={styles.quickAccessSubtitle}>
+                Review and respond to mentee session booking requests
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#667eea" />
+          </View>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('pendingRequests')}</Text>
         {sessionRequests.map((request) => (
@@ -247,5 +272,35 @@ const styles = StyleSheet.create({
   actionButtonText: {
     color: 'white',
     fontWeight: '600',
+  },
+  quickAccessCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  quickAccessContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  quickAccessText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  quickAccessTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  quickAccessSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 18,
   },
 });

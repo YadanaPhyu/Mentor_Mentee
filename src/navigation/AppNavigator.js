@@ -3,7 +3,7 @@ import { View, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import MenteeTabNavigator from './MenteeTabNavigator';
-import MentorStack from './MentorStack';
+import MentorMainStack from './MentorMainStack';
 import AdminStack from './AdminStack';
 import AuthScreen from '../screens/AuthScreen';
 
@@ -44,7 +44,7 @@ export default function AppNavigator() {
         // Mentor Stack
         <Stack.Screen 
           name="MentorStack" 
-          component={MentorStack} 
+          component={MentorMainStack} 
           options={{
             animationTypeForReplace: 'pop',
             gestureEnabled: true

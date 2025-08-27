@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,27 +20,30 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [userType, setUserType] = useState('mentee');
-  const { login } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const { login, signup } = useAuth();
   const { t, toggleLanguage, language } = useLanguage();
 
-  const handleSubmit = () => {
-    if (!email || !password || (!isLogin && !name)) {
-      Alert.alert(t('error'), t('fillAllFields'));
-      return;
+  const handleSubmit = async () => {
+    try {
+      if (!email || !password || (!isLogin && !name)) {
+        Alert.alert(t('error'), t('fillAllFields'));
+        return;
+      }
+
+      setLoading(true);
+      
+      if (isLogin) {
+        await login(email, password);
+      } else {
+        await signup(email, password, name, userType);
+      }
+    } catch (error) {
+      Alert.alert(t('error'), error.message || 'Authentication failed');
+      console.error('Auth error:', error);
+    } finally {
+      setLoading(false);
     }
-
-    // For mentor@example.com, automatically set as mentor
-    const isMentorEmail = email.toLowerCase() === 'mentor@example.com';
-    const type = isMentorEmail ? 'mentor' : (userType || 'mentee');
-
-    // Mock authentication
-    const userData = {
-      id: Math.random().toString(36).substr(2, 9),
-      email,
-      name: isLogin ? (isMentorEmail ? 'Mentor User' : 'Demo User') : name,
-    };
-
-    login(userData, type);
   };
 
   return (
@@ -133,10 +137,18 @@ export default function AuthScreen() {
               </View>
             )}
 
-            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-              <Text style={styles.submitButtonText}>
-                {isLogin ? t('signIn') : t('signUp')}
-              </Text>
+            <TouchableOpacity 
+              style={[styles.submitButton, loading && styles.submitButtonDisabled]} 
+              onPress={handleSubmit}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.submitButtonText}>
+                  {isLogin ? t('signIn') : t('signUp')}
+                </Text>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -254,6 +266,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  submitButtonDisabled: {
+    opacity: 0.7,
   },
   submitButtonText: {
     color: '#FFFFFF',

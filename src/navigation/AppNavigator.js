@@ -6,6 +6,7 @@ import MenteeTabNavigator from './MenteeTabNavigator';
 import MentorMainStack from './MentorMainStack';
 import AdminStack from './AdminStack';
 import AuthScreen from '../screens/AuthScreen';
+import DatabaseTestScreen from '../screens/DatabaseTestScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -15,10 +16,11 @@ export default function AppNavigator() {
   return (
     <Stack.Navigator 
       screenOptions={{ 
-        headerShown: false,
+        headerShown: true,
         animation: 'fade',
         gestureEnabled: false // Disable gesture navigation during auth state changes
       }}
+      initialRouteName="Auth"
     >
       {!user ? (
         // Auth Stack
@@ -26,6 +28,7 @@ export default function AppNavigator() {
           name="Auth" 
           component={AuthScreen} 
           options={{
+            title: 'Login / Sign Up',
             animationTypeForReplace: 'pop',
             gestureEnabled: false
           }}

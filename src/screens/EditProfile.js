@@ -10,6 +10,8 @@ import {
   Image,
   Switch,
   Alert,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,60 +20,177 @@ import { useLanguage } from '../context/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
 
 export default function EditProfile() {
-  const { user, userType, updateUser } = useAuth();
+  const { user, userType, updateUser, API_URL, fetchWithTimeout } = useAuth();
   const { t } = useLanguage();
   const navigation = useNavigation();
+  const [loading, setLoading] = useState(false);
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
 
   // Initialize form state with user data
-  const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [phone, setPhone] = useState(user?.phone || '');
-  const [location, setLocation] = useState(user?.location || '');
-  const [bio, setBio] = useState(user?.bio || '');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [location, setLocation] = useState('');
+  const [bio, setBio] = useState('');
   
   // Role-specific fields
-  const [title, setTitle] = useState(user?.title || '');
-  const [company, setCompany] = useState(user?.company || '');
-  const [experience, setExperience] = useState(user?.experience || '');
-  const [skills, setSkills] = useState(user?.skills?.join(', ') || '');
-  const [hourlyRate, setHourlyRate] = useState(user?.hourlyRate?.toString() || '');
+  const [title, setTitle] = useState('');
+  const [company, setCompany] = useState('');
+  const [experience, setExperience] = useState('');
+  const [skills, setSkills] = useState('');
+  const [hourlyRate, setHourlyRate] = useState('');
   
   // Availability settings
-  const [availableForMentoring, setAvailableForMentoring] = useState(user?.availableForMentoring || false);
-  const [emailNotifications, setEmailNotifications] = useState(user?.emailNotifications || true);
+  const [availableForMentoring, setAvailableForMentoring] = useState(false);
+  const [emailNotifications, setEmailNotifications] = useState(true);
 
-  const handleSave = () => {
+  // Load user profile data
+  React.useEffect(() => {
+    const loadProfile = async () => {
+      if (!user?.id || initialDataLoaded) return;
+
+      try {
+        setLoading(true);
+        const response = await fetchWithTimeout(`${API_URL}/api/profiles/${user.id}`);
+        const profileData = await response.json();
+
+        if (response.ok && profileData) {
+          // Set basic profile data
+          setName(profileData.full_name || user.name || '');
+          setEmail(user.email || '');
+          setBio(profileData.bio || '');
+          setSkills(profileData.skills || '');
+          setExperience(profileData.experience_level || '');
+          setPhone(profileData.phone || '');
+          setLocation(profileData.location || '');
+
+          // Parse interests JSON if it exists
+          try {
+            const interests = profileData.interests ? JSON.parse(profileData.interests) : {};
+            
+            if (userType === 'mentor') {
+              setTitle(interests.title || '');
+              setCompany(interests.company || '');
+              setAvailableForMentoring(interests.availability || false);
+              setHourlyRate(interests.hourlyRate?.toString() || '');
+              // Use expertise as skills if available
+              if (interests.expertise && Array.isArray(interests.expertise)) {
+                setSkills(interests.expertise.join(', '));
+              }
+            } else {
+              setTitle(interests.currentTitle || '');
+              setCompany(interests.company || '');
+              // Use lookingFor as skills if available
+              if (interests.lookingFor && Array.isArray(interests.lookingFor)) {
+                setSkills(interests.lookingFor.join(', '));
+              }
+              // Use careerGoals as bio if available
+              setBio(interests.careerGoals || profileData.bio || '');
+              setExperience(interests.preferredMentorType || profileData.experience_level || '');
+            }
+          } catch (e) {
+            console.warn('Failed to parse interests JSON:', e);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load profile:', error);
+        Alert.alert(
+          t('error'),
+          'Failed to load profile data. Some information might be missing.'
+        );
+      } finally {
+        setLoading(false);
+        setInitialDataLoaded(true);
+      }
+    };
+
+    loadProfile();
+  }, [user?.id]);
+
+  const handleSave = async () => {
     if (!name || !email) {
       Alert.alert(t('error'), 'Name and email are required fields.');
       return;
     }
 
-    const updatedUser = {
-      ...user,
-      name,
-      email,
-      phone,
-      location,
-      bio,
-      title,
-      company,
-      experience,
-      skills: skills.split(',').map(skill => skill.trim()).filter(skill => skill),
-      hourlyRate: hourlyRate ? parseFloat(hourlyRate) : null,
-      availableForMentoring,
-      emailNotifications,
-    };
+    try {
+      // Prepare the update data using actual database fields
+      const updatedUser = {
+        // Common fields
+        full_name: name,
+        bio: bio || '',
+        skills: skills.split(',').map(skill => skill.trim()).filter(skill => skill).join(','),
+        experience_level: experience || '',
+        profile_image: user?.profile?.profile_image || null,
+        phone: phone || null,
+        location: location || null,
+        linkedin_url: user?.profile?.linkedin_url || null,
+        github_url: user?.profile?.github_url || null,
+        portfolio_url: user?.profile?.portfolio_url || null,
+        current_company: company || null,
+        current_title: title || null,
+        industry: user?.profile?.industry || null,
+        
+        // Role-specific fields
+        ...(userType === 'mentor' ? {
+          availability_status: availableForMentoring ? 'available' : 'unavailable',
+          hourly_rate: hourlyRate ? parseFloat(hourlyRate) : null,
+          years_of_experience: experience ? parseInt(experience) : null,
+          expertise_areas: skills,
+          preferred_communication: 'in-app'
+        } : {
+          career_goals: bio || null,
+          preferred_meeting_times: null, // To be implemented in UI
+          learning_style: null, // To be implemented in UI
+          target_role: title || null
+        })
+      };
 
-    // Mock update - in real app would call API
-    if (updateUser && typeof updateUser === 'function') {
-      updateUser(updatedUser);
+      const API_URL = Platform.select({
+        web: 'http://localhost:3000',
+        default: 'http://10.0.2.2:3000',
+      });
+
+      setLoading(true);
+      const response = await fetchWithTimeout(
+        `${API_URL}/api/profiles/${user.id}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify(updatedUser),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update profile');
+      }
+
+      // Update local user data with the response from server
+      if (updateUser && typeof updateUser === 'function') {
+        const updatedUserData = {
+          ...user,
+          name: data.full_name,
+          email: data.email,
+          profile: data
+        };
+        updateUser(updatedUserData);
+      }
+      
+      Alert.alert(
+        t('success'),
+        'Profile updated successfully!',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      Alert.alert(
+        t('error'),
+        error.message || 'Failed to update profile. Please try again.'
+      );
+    } finally {
+      setLoading(false);
     }
-    
-    Alert.alert(
-      t('success'),
-      'Profile updated successfully!',
-      [{ text: 'OK', onPress: () => navigation.goBack() }]
-    );
   };
 
   const handleCancel = () => {
@@ -287,10 +406,15 @@ export default function EditProfile() {
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={styles.saveMainButton}
+            style={[styles.saveMainButton, loading && styles.saveMainButtonDisabled]}
             onPress={handleSave}
+            disabled={loading}
           >
-            <Text style={styles.saveMainButtonText}>Save Changes</Text>
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveMainButtonText}>Save Changes</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -299,6 +423,9 @@ export default function EditProfile() {
 }
 
 const styles = StyleSheet.create({
+  saveMainButtonDisabled: {
+    opacity: 0.7,
+  },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',

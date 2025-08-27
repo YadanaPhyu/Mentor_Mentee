@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
+import { Platform } from 'react-native';
 
 const AuthContext = createContext();
 
@@ -14,32 +15,110 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userType, setUserType] = useState(null); // 'admin', 'mentor' or 'mentee'
 
-  const login = async (userData, type) => {
+  // Use the environment variable for API URL or fallback to localhost
+  const API_URL = Platform.select({
+    web: 'http://localhost:3000',
+    android: 'http://10.0.2.2:3000', // Android emulator localhost
+    ios: 'http://localhost:3000',
+    default: 'http://localhost:3000',
+  });
+
+  // Helper function to make API requests with timeout
+  const fetchWithTimeout = async (url, options = {}, timeout = 5000) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          ...options.headers,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+      clearTimeout(id);
+      return response;
+    } catch (error) {
+      clearTimeout(id);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out. Please check your connection and try again.');
+      }
+      throw error;
+    }
+  };
+
+  const signup = async (email, password, name, role) => {
+    try {
+      const response = await fetchWithTimeout(
+        `${API_URL}/api/auth/signup`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            email,
+            password,
+            name,
+            role
+          }),
+        }
+      );
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Signup failed');
+      }
+
+      // Auto-login after successful signup
+      setUser(data);
+      setUserType(data.role);
+      return true;
+    } catch (error) {
+      console.error('Signup error:', error);
+      throw error;
+    }
+  };
+
+  const login = async (email, password) => {
     try {
       // Special handling for admin login
-      if (userData.email.toLowerCase() === 'admin@example.com') {
-        type = 'admin';
-      }
-      
-      // Validate user type
-      if (!['admin', 'mentor', 'mentee'].includes(type)) {
-        throw new Error('Invalid user type');
+      if (email.toLowerCase() === 'admin@example.com') {
+        setUser({ id: 'admin', email, name: 'Admin' });
+        setUserType('admin');
+        return true;
       }
 
-      // Set user data and type
-      setUser(userData);
-      setUserType(type);
+      const response = await fetchWithTimeout(
+        `${API_URL}/api/auth/login`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            email,
+            password
+          }),
+        }
+      );
 
-      // You would typically store auth token here
-      // await AsyncStorage.setItem('userToken', token);
-      // await AsyncStorage.setItem('userType', type);
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        throw new Error('Unable to connect to server. Please check if the server is running.');
+      }
       
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+
+      setUser(data);
+      setUserType(data.role);
       return true;
     } catch (error) {
       console.error('Login error:', error);
       setUser(null);
       setUserType(null);
-      return false;
+      throw error;
     }
   };
 
@@ -87,7 +166,10 @@ export const AuthProvider = ({ children }) => {
     userType,
     login,
     logout,
+    signup,
     updateUser,
+    API_URL,
+    fetchWithTimeout
   };
 
   return (

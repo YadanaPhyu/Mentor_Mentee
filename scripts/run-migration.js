@@ -1,7 +1,7 @@
 const sql = require('mssql');
 const fs = require('fs').promises;
 const path = require('path');
-require('dotenv').config();
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 const config = {
     server: process.env.DB_SERVER || 'localhost',
@@ -39,8 +39,15 @@ async function runMigration() {
         await sql.connect(config);
         console.log('Connected to database');
 
+        // Get migration file from command line argument
+        const migrationFile = process.argv[2];
+        if (!migrationFile) {
+            console.error('Please specify a migration file');
+            process.exit(1);
+        }
+        
         // Read and execute the migration file
-        const migrationPath = path.join(__dirname, '..', 'database', 'migrations', '005_add_profile_fields.sql');
+        const migrationPath = path.join(__dirname, '..', 'database', 'migrations', migrationFile);
         const migrationSql = await fs.readFile(migrationPath, 'utf8');
 
         // Split the migration into individual statements

@@ -122,11 +122,76 @@ app.post('/api/users', async (req, res) => {
 app.get('/api/profiles/:userId', async (req, res) => {
     const { userId } = req.params;
     try {
-        const result = await sql.query`
-            SELECT * FROM Profiles WHERE user_id = ${userId}
+        // First get the user's role
+        const userResult = await sql.query`
+            SELECT role FROM Users WHERE id = ${userId}
         `;
+        
+        if (userResult.recordset.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const role = userResult.recordset[0].role;
+        let result;
+
+        if (role === 'mentor') {
+            result = await sql.query`
+                SELECT 
+                    p.id,
+                    p.user_id,
+                    p.full_name,
+                    p.bio,
+                    p.skills,
+                    p.experience_level,
+                    p.phone,
+                    p.location,
+                    p.current_company,
+                    p.current_title,
+                    mp.availability_status,
+                    mp.hourly_rate,
+                    mp.expertise_areas,
+                    mp.years_of_experience,
+                    mp.preferred_mentoring_style,
+                    mp.max_mentees,
+                    mp.preferred_meeting_times,
+                    COALESCE(mp.current_title, p.current_title) as mentor_title,
+                    COALESCE(mp.current_company, p.current_company) as mentor_company,
+                    u.email,
+                    u.role
+                FROM Profiles p
+                JOIN Users u ON p.user_id = u.id
+                LEFT JOIN MentorProfiles mp ON p.id = mp.profile_id
+                WHERE p.user_id = ${userId}
+            `;
+        } else {
+            result = await sql.query`
+                SELECT 
+                    p.id,
+                    p.user_id,
+                    p.full_name,
+                    p.bio,
+                    p.skills,
+                    p.experience_level,
+                    p.phone,
+                    p.location,
+                    p.current_company,
+                    p.current_title,
+                    mep.career_goals,
+                    mep.learning_style,
+                    mep.current_job_title,
+                    mep.target_job_title,
+                    u.email,
+                    u.role
+                FROM Profiles p
+                JOIN Users u ON p.user_id = u.id
+                LEFT JOIN MenteeProfiles mep ON p.id = mep.profile_id
+                WHERE p.user_id = ${userId}
+            `;
+        }
+
         res.json(result.recordset[0]);
     } catch (err) {
+        console.error('Profile fetch error:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -155,10 +220,12 @@ app.put('/api/profiles/:userId', async (req, res) => {
         current_company, current_title, industry,
         // Mentor specific fields
         availability_status, hourly_rate, years_of_experience,
-        expertise_areas, preferred_communication,
+        expertise_areas, preferred_communication, preferred_meeting_times,
         // Mentee specific fields
-        career_goals, preferred_meeting_times, learning_style, target_role
+        career_goals, learning_style, target_role
     } = req.body;
+    
+    console.log('Received preferred_meeting_times:', preferred_meeting_times);
     
     try {
         // First check if profile exists
@@ -222,13 +289,32 @@ app.put('/api/profiles/:userId', async (req, res) => {
             `;
 
         // Fetch and return updated profile
-            // Fetch and return updated profile
-            const result = await sql.query`
-                SELECT p.*, u.email, u.role
-                FROM Profiles p
-                JOIN Users u ON p.user_id = u.id
-                WHERE p.user_id = ${userId}
+            // Update role-specific profile table
+        if (checkProfile.recordset[0].role === 'mentor') {
+            await sql.query`
+                UPDATE MentorProfiles
+                SET preferred_meeting_times = ${preferred_meeting_times}
+                WHERE profile_id IN (
+                    SELECT id FROM Profiles WHERE user_id = ${userId}
+                )
             `;
+        }
+
+        // Fetch and return updated profile with role-specific data
+        const result = await sql.query`
+            SELECT p.*, u.email, u.role,
+                CASE WHEN u.role = 'mentor' 
+                    THEN (
+                        SELECT preferred_meeting_times 
+                        FROM MentorProfiles mp 
+                        WHERE mp.profile_id = p.id
+                    )
+                    ELSE NULL 
+                END as preferred_meeting_times
+            FROM Profiles p
+            JOIN Users u ON p.user_id = u.id
+            WHERE p.user_id = ${userId}
+        `;
             
             res.json(result.recordset[0]);
         }

@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
+import MeetingTimeSelector from '../components/MeetingTimeSelector';
 
 export default function EditProfile() {
   const { user, userType, updateUser, API_URL, fetchWithTimeout } = useAuth();
@@ -39,6 +40,7 @@ export default function EditProfile() {
   const [experience, setExperience] = useState('');
   const [skills, setSkills] = useState('');
   const [hourlyRate, setHourlyRate] = useState('');
+  const [preferredMeetingTimes, setPreferredMeetingTimes] = useState('');
   
   // Availability settings
   const [availableForMentoring, setAvailableForMentoring] = useState(false);
@@ -55,42 +57,43 @@ export default function EditProfile() {
         const profileData = await response.json();
 
         if (response.ok && profileData) {
+          console.log('Loading profile data:', {
+            ...profileData,
+            current_company: profileData.current_company,
+            current_title: profileData.current_title,
+            preferred_meeting_times: profileData.preferred_meeting_times,
+            mentor_company: profileData.mentor_company,
+            mentor_title: profileData.mentor_title,
+          });
+          
           // Set basic profile data
           setName(profileData.full_name || user.name || '');
-          setEmail(user.email || '');
+          setEmail(profileData.email || user.email || '');
           setBio(profileData.bio || '');
           setSkills(profileData.skills || '');
           setExperience(profileData.experience_level || '');
           setPhone(profileData.phone || '');
           setLocation(profileData.location || '');
-
-          // Parse interests JSON if it exists
-          try {
-            const interests = profileData.interests ? JSON.parse(profileData.interests) : {};
-            
-            if (userType === 'mentor') {
-              setTitle(interests.title || '');
-              setCompany(interests.company || '');
-              setAvailableForMentoring(interests.availability || false);
-              setHourlyRate(interests.hourlyRate?.toString() || '');
-              // Use expertise as skills if available
-              if (interests.expertise && Array.isArray(interests.expertise)) {
-                setSkills(interests.expertise.join(', '));
-              }
-            } else {
-              setTitle(interests.currentTitle || '');
-              setCompany(interests.company || '');
-              // Use lookingFor as skills if available
-              if (interests.lookingFor && Array.isArray(interests.lookingFor)) {
-                setSkills(interests.lookingFor.join(', '));
-              }
-              // Use careerGoals as bio if available
-              setBio(interests.careerGoals || profileData.bio || '');
-              setExperience(interests.preferredMentorType || profileData.experience_level || '');
+          
+          if (userType === 'mentor') {
+            // Set mentor-specific data
+            setCompany(profileData.mentor_company || profileData.current_company || '');
+            setTitle(profileData.mentor_title || profileData.current_title || '');
+            setAvailableForMentoring(profileData.availability_status === 'available');
+            setHourlyRate(profileData.hourly_rate?.toString() || '');
+            setPreferredMeetingTimes(profileData.preferred_meeting_times || '');
+            setExperience(profileData.years_of_experience?.toString() || '');
+            // Use expertise areas if available
+            if (profileData.expertise_areas) {
+              setSkills(profileData.expertise_areas);
             }
-          } catch (e) {
-            console.warn('Failed to parse interests JSON:', e);
+          } else {
+            // Set mentee-specific data
+            setCompany(profileData.current_company || '');
+            setTitle(profileData.current_title || '');
+            setBio(profileData.career_goals || profileData.bio || '');
           }
+          setInitialDataLoaded(true);
         }
       } catch (error) {
         console.error('Failed to load profile:', error);
@@ -114,6 +117,13 @@ export default function EditProfile() {
     }
 
     try {
+      console.log('Current form values:', {
+        name, email, bio, skills, experience,
+        phone, location, company, title,
+        userType, availableForMentoring,
+        hourlyRate, preferredMeetingTimes
+      });
+
       // Prepare the update data using actual database fields
       const updatedUser = {
         // Common fields
@@ -137,19 +147,14 @@ export default function EditProfile() {
           hourly_rate: hourlyRate ? parseFloat(hourlyRate) : null,
           years_of_experience: experience ? parseInt(experience) : null,
           expertise_areas: skills,
-          preferred_communication: 'in-app'
+          preferred_communication: 'in-app',
+          preferred_meeting_times: preferredMeetingTimes // Add meeting times for mentors
         } : {
           career_goals: bio || null,
-          preferred_meeting_times: null, // To be implemented in UI
           learning_style: null, // To be implemented in UI
           target_role: title || null
         })
       };
-
-      const API_URL = Platform.select({
-        web: 'http://localhost:3000',
-        default: 'http://10.0.2.2:3000',
-      });
 
       setLoading(true);
       const response = await fetchWithTimeout(
@@ -161,6 +166,7 @@ export default function EditProfile() {
       );
 
       const data = await response.json();
+      console.log('Server response:', data);
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to update profile');
@@ -378,6 +384,17 @@ export default function EditProfile() {
                 thumbColor={availableForMentoring ? '#fff' : '#f4f3f4'}
               />
             </View>
+          </View>
+        )}
+
+        {/* Meeting Time Settings - Mentor Only */}
+        {userType === 'mentor' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Meeting Availability</Text>
+            <MeetingTimeSelector
+              value={preferredMeetingTimes}
+              onChange={setPreferredMeetingTimes}
+            />
           </View>
         )}
 

@@ -71,12 +71,14 @@ app.put('/api/profiles/:userId', async (req, res) => {
                     INSERT INTO MentorProfiles (
                         profile_id, availability, hourly_rate, 
                         expertise_areas, years_of_experience,
-                        preferred_mentoring_style, max_mentees
+                        preferred_mentoring_style, max_mentees,
+                        preferred_meeting_times
                     )
                     VALUES (
                         ${profileId}, ${availability}, ${hourly_rate}, 
                         ${expertise_areas}, ${years_of_experience},
-                        ${preferred_mentoring_style}, ${max_mentees}
+                        ${preferred_mentoring_style}, ${max_mentees},
+                        ${preferred_meeting_times}
                     )
                 `;
             } else {
@@ -87,7 +89,8 @@ app.put('/api/profiles/:userId', async (req, res) => {
                         expertise_areas = ${expertise_areas},
                         years_of_experience = ${years_of_experience},
                         preferred_mentoring_style = ${preferred_mentoring_style},
-                        max_mentees = ${max_mentees}
+                        max_mentees = ${max_mentees},
+                        preferred_meeting_times = ${preferred_meeting_times}
                     WHERE profile_id = ${profileId}
                 `;
             }

@@ -35,14 +35,29 @@ export default function MeetingTimeSelector({ value, onChange }) {
   maxDate.setDate(today.getDate() + 30); // 1 month window
 
   useEffect(() => {
-    if (value) {
-      try {
-        const parsedValue = typeof value === 'string' ? JSON.parse(value) : value;
-        setAvailability(parsedValue);
-      } catch (e) {
-        console.warn('Failed to parse availability:', e);
+    try {
+      // Handle all possible input cases
+      if (!value) {
+        console.log('No availability value provided, setting to empty object');
         setAvailability({});
+      } else if (typeof value === 'string') {
+        if (value === '{}' || value === 'null') {
+          console.log('Empty availability string provided, setting to empty object');
+          setAvailability({});
+        } else {
+          console.log('Parsing availability string:', value);
+          const parsedValue = JSON.parse(value);
+          setAvailability(parsedValue);
+        }
+      } else if (typeof value === 'object') {
+        console.log('Setting availability from object:', value);
+        setAvailability(value);
       }
+    } catch (e) {
+      console.warn('Failed to parse availability value:', e, 'Raw value:', value);
+      setAvailability({});
+      // Pass back valid empty object to parent
+      onChange('{}');
     }
   }, [value]);
 
@@ -62,8 +77,18 @@ export default function MeetingTimeSelector({ value, onChange }) {
       delete newAvailability[dateStr];
     }
 
+    console.log('Updated availability:', newAvailability);
     setAvailability(newAvailability);
-    onChange(JSON.stringify(newAvailability));
+    
+    // Always return a valid JSON string to the parent
+    try {
+      const jsonString = JSON.stringify(newAvailability);
+      console.log('Sending availability to parent:', jsonString);
+      onChange(jsonString);
+    } catch (e) {
+      console.error('Error stringifying availability:', e);
+      onChange('{}');
+    }
   };
 
   const getAvailabilityDisplay = () => {

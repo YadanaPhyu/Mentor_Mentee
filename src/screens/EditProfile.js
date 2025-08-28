@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
 import MeetingTimeSelector from '../components/MeetingTimeSelector';
+import InlineMeetingScheduler from '../components/InlineMeetingScheduler';
 
 export default function EditProfile() {
   const { user, userType, updateUser, API_URL, fetchWithTimeout } = useAuth();
@@ -26,6 +27,21 @@ export default function EditProfile() {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  
+  // Log important data on initial render to help with debugging
+  React.useEffect(() => {
+    console.log('EditProfile component mounted with:', {
+      userPresent: !!user,
+      userId: user?.id,
+      userType,
+      apiUrl: API_URL,
+    });
+    
+    // Check if API_URL is properly defined
+    if (!API_URL) {
+      console.error('API_URL is not defined in AuthContext');
+    }
+  }, []);
 
   // Initialize form state with user data
   const [name, setName] = useState('');
@@ -40,16 +56,31 @@ export default function EditProfile() {
   const [experience, setExperience] = useState('');
   const [skills, setSkills] = useState('');
   const [hourlyRate, setHourlyRate] = useState('');
-  const [preferredMeetingTimes, setPreferredMeetingTimes] = useState('');
+  const [preferredMeetingTimes, setPreferredMeetingTimes] = useState('{}');
   
   // Availability settings
   const [availableForMentoring, setAvailableForMentoring] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
+  
+  // Validation state
+  const [nameError, setNameError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [hourlyRateError, setHourlyRateError] = useState('');
+  const [skillsError, setSkillsError] = useState('');
+  const [meetingTimesError, setMeetingTimesError] = useState('');
 
   // Load user profile data
   React.useEffect(() => {
     const loadProfile = async () => {
-      if (!user?.id || initialDataLoaded) return;
+      if (!user?.id) {
+        console.warn('No user ID available, cannot load profile data');
+        return;
+      }
+      
+      if (initialDataLoaded) {
+        console.log('Profile data already loaded, skipping fetch');
+        return;
+      }
 
       try {
         setLoading(true);
@@ -57,10 +88,20 @@ export default function EditProfile() {
           userId: user.id, 
           userType,
           name: user.name,
-          email: user.email 
+          email: user.email,
+          apiUrl: API_URL
         });
         
-        const response = await fetchWithTimeout(`${API_URL}/api/profiles/${user.id}`);
+        // Ensure API_URL is properly set
+        if (!API_URL) {
+          throw new Error('API URL is not defined');
+        }
+        
+        const requestUrl = `${API_URL}/api/profiles/${user.id}`;
+        console.log('Making API request to:', requestUrl);
+        
+        const response = await fetchWithTimeout(requestUrl);
+        console.log('API Response status:', response.status);
         const profileData = await response.json();
 
         if (!response.ok) {
@@ -125,12 +166,17 @@ export default function EditProfile() {
           // Handle preferred meeting times with proper formatting and validation
           let meetingTimesValue = '{}';
           try {
-            if (typeof profileData.preferred_meeting_times === 'string') {
-              // Validate if it's a valid JSON string
-              JSON.parse(profileData.preferred_meeting_times);
-              meetingTimesValue = profileData.preferred_meeting_times;
-            } else if (profileData.preferred_meeting_times) {
-              meetingTimesValue = JSON.stringify(profileData.preferred_meeting_times);
+            if (profileData.preferred_meeting_times) {
+              if (typeof profileData.preferred_meeting_times === 'string') {
+                // Validate if it's a valid JSON string
+                JSON.parse(profileData.preferred_meeting_times);
+                meetingTimesValue = profileData.preferred_meeting_times;
+              } else if (typeof profileData.preferred_meeting_times === 'object') {
+                meetingTimesValue = JSON.stringify(profileData.preferred_meeting_times);
+              }
+              console.log('Valid meeting times found:', meetingTimesValue);
+            } else {
+              console.log('No meeting times found, using default empty object');
             }
           } catch (e) {
             console.warn('Invalid meeting times format:', e);
@@ -154,9 +200,26 @@ export default function EditProfile() {
         console.log('Profile data loaded successfully for user type:', userType);
       } catch (error) {
         console.error('Failed to load profile:', error.message);
+        
+        // Create default values for form
+        setName(user?.name || '');
+        setEmail(user?.email || '');
+        
+        // Show user-friendly error message
         Alert.alert(
           t('error'),
-          'Failed to load profile data. Some information might be missing.'
+          'Failed to load complete profile data. Some information might be missing.\n\n' + 
+          'You may continue editing with partial data.',
+          [
+            { 
+              text: 'Try Again', 
+              onPress: () => {
+                setInitialDataLoaded(false);
+                // This will trigger the useEffect to run again
+              } 
+            },
+            { text: 'Continue' }
+          ]
         );
       } finally {
         setLoading(false);
@@ -167,17 +230,80 @@ export default function EditProfile() {
   }, [user?.id, userType, t]);
 
   const handleSave = async () => {
-    if (!name || !email) {
-      Alert.alert(t('error'), 'Name and email are required fields.');
+    // Reset all validation errors
+    setNameError('');
+    setEmailError('');
+    setHourlyRateError('');
+    setSkillsError('');
+    setMeetingTimesError('');
+    
+    // Basic validation
+    let isValid = true;
+    
+    if (!name) {
+      setNameError('Name is required');
+      isValid = false;
+    }
+    
+    if (!email) {
+      setEmailError('Email is required');
+      isValid = false;
+    }
+    
+    // Mentor-specific validations
+    if (userType === 'mentor' && availableForMentoring) {
+      // Validate hourly rate
+      if (!hourlyRate) {
+        setHourlyRateError('Hourly rate is required when available for mentoring');
+        isValid = false;
+      }
+      
+      // Validate skills
+      if (!skills.trim()) {
+        setSkillsError('Please enter at least one skill or expertise area');
+        isValid = false;
+      }
+      
+      // Validate meeting times
+      let hasMeetingTimes = false;
+      try {
+        // Handle all possible input formats
+        if (!preferredMeetingTimes || preferredMeetingTimes === '{}' || preferredMeetingTimes === 'null') {
+          console.log('Empty meeting times detected during validation');
+          hasMeetingTimes = false;
+        } else {
+          const meetingTimesObj = typeof preferredMeetingTimes === 'string' 
+            ? JSON.parse(preferredMeetingTimes) 
+            : preferredMeetingTimes;
+            
+          console.log('Validating meeting times:', meetingTimesObj);
+          hasMeetingTimes = Object.keys(meetingTimesObj).length > 0;
+        }
+      } catch (e) {
+        console.warn('Failed to parse meeting times during validation:', e, 'Raw value:', preferredMeetingTimes);
+        hasMeetingTimes = false;
+      }
+      
+      if (!hasMeetingTimes) {
+        setMeetingTimesError('Please set at least one available meeting time');
+        isValid = false;
+      }
+    }
+    
+    if (!isValid) {
+      Alert.alert(t('error'), 'Please correct the errors in the form before saving.');
       return;
     }
 
     try {
-      console.log('Current form values:', {
+      // Log form values for debugging
+      console.log('Saving form values:', {
         name, email, bio, skills, experience,
         phone, location, company, title,
         userType, availableForMentoring,
-        hourlyRate, preferredMeetingTimes
+        hourlyRate, 
+        preferredMeetingTimesType: typeof preferredMeetingTimes,
+        preferredMeetingTimesValue: preferredMeetingTimes
       });
 
       // Prepare the update data using actual database fields
@@ -204,7 +330,34 @@ export default function EditProfile() {
           years_of_experience: experience ? parseInt(experience, 10) : 0,
           expertise_areas: skills,
           preferred_communication: 'in-app',
-          preferred_meeting_times: preferredMeetingTimes && preferredMeetingTimes !== 'null' ? preferredMeetingTimes : '{}'
+          // Format meeting times properly
+          preferred_meeting_times: availableForMentoring ? (() => {
+            console.log('Preparing meeting times for save:', preferredMeetingTimes);
+            try {
+              // If it's null, empty, or invalid, use empty object
+              if (!preferredMeetingTimes || preferredMeetingTimes === 'null') {
+                return '{}';
+              }
+              
+              // If it's already a string, validate it's parseable JSON and use it
+              if (typeof preferredMeetingTimes === 'string') {
+                // Make sure it's valid JSON
+                JSON.parse(preferredMeetingTimes);
+                return preferredMeetingTimes;
+              }
+              
+              // If it's an object, stringify it
+              if (typeof preferredMeetingTimes === 'object') {
+                return JSON.stringify(preferredMeetingTimes);
+              }
+              
+              // Fallback
+              return '{}';
+            } catch (e) {
+              console.error('Error formatting meeting times for save:', e);
+              return '{}';
+            }
+          })() : '{}' // If not available, reset to empty object
         } : {
           career_goals: bio || null,
           learning_style: null, // To be implemented in UI
@@ -213,10 +366,19 @@ export default function EditProfile() {
       };
 
       setLoading(true);
+      console.log('Sending API request to update profile:', {
+        url: `${API_URL}/api/profiles/${user.id}`,
+        data: updatedUser
+      });
+      
       const response = await fetchWithTimeout(
         `${API_URL}/api/profiles/${user.id}`,
         {
           method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
           body: JSON.stringify(updatedUser),
         }
       );
@@ -435,7 +597,14 @@ export default function EditProfile() {
               <Text style={styles.switchLabel}>Available for Mentoring</Text>
               <Switch
                 value={availableForMentoring}
-                onValueChange={setAvailableForMentoring}
+                onValueChange={(value) => {
+                  setAvailableForMentoring(value);
+                  if (!value) {
+                    // Reset meeting times and clear validation errors when toggled off
+                    setPreferredMeetingTimes('{}');
+                    setMeetingTimesError('');
+                  }
+                }}
                 trackColor={{ false: '#767577', true: '#667eea' }}
                 thumbColor={availableForMentoring ? '#fff' : '#f4f3f4'}
               />
@@ -444,13 +613,101 @@ export default function EditProfile() {
         )}
 
         {/* Meeting Time Settings - Mentor Only */}
-        {userType === 'mentor' && (
+        {userType === 'mentor' && availableForMentoring && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Meeting Availability</Text>
-            <MeetingTimeSelector
-              value={preferredMeetingTimes}
-              onChange={setPreferredMeetingTimes}
-            />
+            <Text style={styles.helpText}>
+              Set the times when you're available for mentoring sessions.
+              Swipe to see more days and tap time slots to select/unselect them.
+            </Text>
+            
+            {/* Inline Meeting Time Scheduler */}
+            <View style={styles.inlineSchedulerContainer}>
+              <InlineMeetingScheduler
+                value={preferredMeetingTimes}
+                onChange={(newTimes) => {
+                  console.log('Meeting times updated from inline scheduler:', newTimes);
+                  
+                  try {
+                    // Ensure we always have a valid JSON string or object
+                    if (typeof newTimes === 'object') {
+                      const jsonString = JSON.stringify(newTimes);
+                      console.log('Converted meeting times object to string:', jsonString);
+                      setPreferredMeetingTimes(jsonString);
+                      
+                      // Clear validation error if we have times
+                      if (Object.keys(newTimes).length > 0) {
+                        setMeetingTimesError('');
+                      }
+                    } else if (typeof newTimes === 'string') {
+                      // Validate it's a proper JSON string
+                      const parsed = JSON.parse(newTimes);
+                      console.log('Parsed meeting times string:', parsed);
+                      setPreferredMeetingTimes(newTimes);
+                      
+                      // Clear validation error if we have times
+                      if (Object.keys(parsed).length > 0) {
+                        setMeetingTimesError('');
+                      }
+                    } else {
+                      console.warn('Invalid meeting times type received:', typeof newTimes);
+                      setPreferredMeetingTimes('{}');
+                    }
+                  } catch (e) {
+                    console.error('Error processing meeting times:', e, 'Value was:', newTimes);
+                    // Set to empty object if we get invalid data
+                    setPreferredMeetingTimes('{}');
+                  }
+                }}
+              />
+            </View>
+            
+            <Text style={styles.orText}>Or use the calendar view</Text>
+            
+            {/* Original Calendar-Based Selector */}
+            <View style={styles.meetingTimesContainer}>
+              <MeetingTimeSelector
+                value={preferredMeetingTimes}
+                onChange={(newTimes) => {
+                  console.log('Meeting times updated from selector:', newTimes);
+                  
+                  try {
+                    // Ensure we always have a valid JSON string or object
+                    if (typeof newTimes === 'object') {
+                      const jsonString = JSON.stringify(newTimes);
+                      console.log('Converted meeting times object to string:', jsonString);
+                      setPreferredMeetingTimes(jsonString);
+                      
+                      // Clear validation error if we have times
+                      if (Object.keys(newTimes).length > 0) {
+                        setMeetingTimesError('');
+                      }
+                    } else if (typeof newTimes === 'string') {
+                      // Validate it's a proper JSON string
+                      const parsed = JSON.parse(newTimes);
+                      console.log('Parsed meeting times string:', parsed);
+                      setPreferredMeetingTimes(newTimes);
+                      
+                      // Clear validation error if we have times
+                      if (Object.keys(parsed).length > 0) {
+                        setMeetingTimesError('');
+                      }
+                    } else {
+                      console.warn('Invalid meeting times type received:', typeof newTimes);
+                      setPreferredMeetingTimes('{}');
+                    }
+                  } catch (e) {
+                    console.error('Error processing meeting times:', e, 'Value was:', newTimes);
+                    // Set to empty object if we get invalid data
+                    setPreferredMeetingTimes('{}');
+                  }
+                }}
+              />
+            </View>
+            
+            {meetingTimesError ? (
+              <Text style={styles.errorText}>{meetingTimesError}</Text>
+            ) : null}
           </View>
         )}
 
@@ -661,5 +918,22 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  meetingTimesContainer: {
+    marginTop: 10,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 10,
+  },
+  inlineSchedulerContainer: {
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  orText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginVertical: 15,
+    fontStyle: 'italic',
   },
 });

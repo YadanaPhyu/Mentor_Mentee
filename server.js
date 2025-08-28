@@ -147,20 +147,19 @@ app.get('/api/profiles/:userId', async (req, res) => {
                     p.location,
                     p.current_company,
                     p.current_title,
-                    mp.availability_status,
-                    mp.hourly_rate,
-                    mp.expertise_areas,
-                    mp.years_of_experience,
-                    mp.preferred_mentoring_style,
-                    mp.max_mentees,
-                    mp.preferred_meeting_times,
-                    COALESCE(mp.current_title, p.current_title) as mentor_title,
-                    COALESCE(mp.current_company, p.current_company) as mentor_company,
+                    p.availability_status,
+                    p.hourly_rate,
+                    p.expertise_areas,
+                    p.years_of_experience,
+                    p.preferred_mentoring_style,
+                    p.max_mentees,
+                    p.preferred_meeting_times,
+                    p.current_title as mentor_title,
+                    p.current_company as mentor_company,
                     u.email,
                     u.role
                 FROM Profiles p
                 JOIN Users u ON p.user_id = u.id
-                LEFT JOIN MentorProfiles mp ON p.id = mp.profile_id
                 WHERE p.user_id = ${userId}
             `;
         } else {

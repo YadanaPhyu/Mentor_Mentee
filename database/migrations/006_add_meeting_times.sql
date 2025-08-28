@@ -15,8 +15,21 @@ IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Profiles')
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Profiles') AND name = 'current_title')
     ALTER TABLE Profiles ADD current_title VARCHAR(255);
 
--- Add preferred_meeting_times as NTEXT
-ALTER TABLE Profiles ADD preferred_meeting_times NTEXT;
+-- Add preferred_meeting_times as NTEXT with default value
+ALTER TABLE Profiles ADD preferred_meeting_times NTEXT DEFAULT '{}';
+
+-- Add mentor-specific fields with proper defaults
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Profiles') AND name = 'hourly_rate')
+    ALTER TABLE Profiles ADD hourly_rate DECIMAL(10,2) DEFAULT 0.00;
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Profiles') AND name = 'years_of_experience')
+    ALTER TABLE Profiles ADD years_of_experience INT DEFAULT 0;
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Profiles') AND name = 'expertise_areas')
+    ALTER TABLE Profiles ADD expertise_areas NVARCHAR(MAX);
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('Profiles') AND name = 'availability_status')
+    ALTER TABLE Profiles ADD availability_status VARCHAR(50) DEFAULT 'unavailable';
 
 -- Add or update columns in MentorProfiles table
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('MentorProfiles') AND name = 'current_company')
@@ -27,6 +40,14 @@ IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('MentorProf
 
 -- Add preferred_meeting_times as NTEXT
 ALTER TABLE MentorProfiles ADD preferred_meeting_times NTEXT;
+
+-- Add availability_status to MentorProfiles
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('MentorProfiles') AND name = 'availability_status')
+    ALTER TABLE MentorProfiles ADD availability_status VARCHAR(50) DEFAULT 'unavailable';
+
+-- Add hourly_rate to MentorProfiles
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('MentorProfiles') AND name = 'hourly_rate')
+    ALTER TABLE MentorProfiles ADD hourly_rate DECIMAL(10,2) DEFAULT 0.00;
 
 -- Create MentorAvailability table for date-based availability
 CREATE TABLE MentorAvailability (

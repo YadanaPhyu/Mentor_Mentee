@@ -53,62 +53,118 @@ export default function EditProfile() {
 
       try {
         setLoading(true);
+        console.log('Fetching profile data for user:', { 
+          userId: user.id, 
+          userType,
+          name: user.name,
+          email: user.email 
+        });
+        
         const response = await fetchWithTimeout(`${API_URL}/api/profiles/${user.id}`);
         const profileData = await response.json();
 
-        if (response.ok && profileData) {
-          console.log('Loading profile data:', {
-            ...profileData,
-            current_company: profileData.current_company,
-            current_title: profileData.current_title,
-            preferred_meeting_times: profileData.preferred_meeting_times,
-            mentor_company: profileData.mentor_company,
-            mentor_title: profileData.mentor_title,
+        if (!response.ok) {
+          console.error('Profile fetch failed:', { 
+            status: response.status, 
+            statusText: response.statusText 
           });
+          throw new Error(profileData.error || 'Failed to load profile data');
+        }
+
+        if (!profileData) {
+          console.error('No profile data received for user:', user.id);
+          throw new Error('No profile data received');
+        }
+
+        console.log('Raw profile data:', JSON.stringify(profileData, null, 2));
+
+        // Set basic profile data first
+        setName(profileData.full_name || user.name || '');
+        setEmail(profileData.email || user.email || '');
+        setBio(profileData.bio || '');
+        setPhone(profileData.phone || '');
+        setLocation(profileData.location || '');
+
+        // Handle user type specific data
+        if (userType === 'mentor') {
+          console.log('Setting mentor-specific data');
           
-          // Set basic profile data
-          setName(profileData.full_name || user.name || '');
-          setEmail(profileData.email || user.email || '');
-          setBio(profileData.bio || '');
+          // Log mentor data before setting
+          console.log('Mentor data to set:', {
+            company: profileData.current_company,
+            title: profileData.current_title,
+            availabilityStatus: profileData.availability_status,
+            hourlyRate: profileData.hourly_rate,
+            meetingTimes: typeof profileData.preferred_meeting_times === 'string' 
+              ? profileData.preferred_meeting_times 
+              : JSON.stringify(profileData.preferred_meeting_times),
+            experience: profileData.years_of_experience,
+            expertiseAreas: profileData.expertise_areas,
+            skills: profileData.skills
+          });
+
+          // Set mentor-specific fields with type checking
+          console.log('Raw mentor field values:', {
+            hourlyRate: profileData.hourly_rate,
+            meetingTimes: profileData.preferred_meeting_times,
+            rawCompany: profileData.current_company,
+            rawTitle: profileData.current_title
+          });
+
+          setCompany(profileData.current_company || '');
+          setTitle(profileData.current_title || '');
+          setAvailableForMentoring(profileData.availability_status === 'available');
+          
+          // Handle hourly rate with proper type checking and conversion
+          const hourlyRateValue = profileData.hourly_rate != null 
+            ? profileData.hourly_rate.toString() 
+            : '';
+          console.log('Setting hourly rate:', hourlyRateValue);
+          setHourlyRate(hourlyRateValue);
+          
+          // Handle preferred meeting times with proper formatting and validation
+          let meetingTimesValue = '{}';
+          try {
+            if (typeof profileData.preferred_meeting_times === 'string') {
+              // Validate if it's a valid JSON string
+              JSON.parse(profileData.preferred_meeting_times);
+              meetingTimesValue = profileData.preferred_meeting_times;
+            } else if (profileData.preferred_meeting_times) {
+              meetingTimesValue = JSON.stringify(profileData.preferred_meeting_times);
+            }
+          } catch (e) {
+            console.warn('Invalid meeting times format:', e);
+          }
+          console.log('Setting meeting times:', meetingTimesValue);
+          setPreferredMeetingTimes(meetingTimesValue);
+          
+          setExperience(profileData.years_of_experience?.toString() || '');
+          setSkills(profileData.expertise_areas || profileData.skills || '');
+
+        } else {
+          console.log('Setting mentee-specific data');
+          setCompany(profileData.current_company || '');
+          setTitle(profileData.current_title || '');
+          setBio(profileData.career_goals || profileData.bio || '');
           setSkills(profileData.skills || '');
           setExperience(profileData.experience_level || '');
-          setPhone(profileData.phone || '');
-          setLocation(profileData.location || '');
-          
-          if (userType === 'mentor') {
-            // Set mentor-specific data
-            setCompany(profileData.mentor_company || profileData.current_company || '');
-            setTitle(profileData.mentor_title || profileData.current_title || '');
-            setAvailableForMentoring(profileData.availability_status === 'available');
-            setHourlyRate(profileData.hourly_rate?.toString() || '');
-            setPreferredMeetingTimes(profileData.preferred_meeting_times || '');
-            setExperience(profileData.years_of_experience?.toString() || '');
-            // Use expertise areas if available
-            if (profileData.expertise_areas) {
-              setSkills(profileData.expertise_areas);
-            }
-          } else {
-            // Set mentee-specific data
-            setCompany(profileData.current_company || '');
-            setTitle(profileData.current_title || '');
-            setBio(profileData.career_goals || profileData.bio || '');
-          }
-          setInitialDataLoaded(true);
         }
+
+        setInitialDataLoaded(true);
+        console.log('Profile data loaded successfully for user type:', userType);
       } catch (error) {
-        console.error('Failed to load profile:', error);
+        console.error('Failed to load profile:', error.message);
         Alert.alert(
           t('error'),
           'Failed to load profile data. Some information might be missing.'
         );
       } finally {
         setLoading(false);
-        setInitialDataLoaded(true);
       }
     };
 
     loadProfile();
-  }, [user?.id]);
+  }, [user?.id, userType, t]);
 
   const handleSave = async () => {
     if (!name || !email) {
@@ -144,11 +200,11 @@ export default function EditProfile() {
         // Role-specific fields
         ...(userType === 'mentor' ? {
           availability_status: availableForMentoring ? 'available' : 'unavailable',
-          hourly_rate: hourlyRate ? parseFloat(hourlyRate) : null,
-          years_of_experience: experience ? parseInt(experience) : null,
+          hourly_rate: hourlyRate && hourlyRate.trim() !== '' ? parseFloat(hourlyRate) : 0,
+          years_of_experience: experience ? parseInt(experience, 10) : 0,
           expertise_areas: skills,
           preferred_communication: 'in-app',
-          preferred_meeting_times: preferredMeetingTimes // Add meeting times for mentors
+          preferred_meeting_times: preferredMeetingTimes && preferredMeetingTimes !== 'null' ? preferredMeetingTimes : '{}'
         } : {
           career_goals: bio || null,
           learning_style: null, // To be implemented in UI

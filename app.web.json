@@ -1,0 +1,12 @@
+{
+  "name": "web",
+  "version": "1.0.0",
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start --web",
+    "build": "expo build:web"
+  },
+  "resolutions": {
+    "@expo/webpack-config": "^0.17.2"
+  }
+}

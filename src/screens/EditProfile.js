@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,12 +12,14 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
+import MeetingTimeSelector from '../components/MeetingTimeSelector';
 
 export default function EditProfile() {
   const { user, userType, updateUser, API_URL, fetchWithTimeout } = useAuth();
@@ -39,10 +41,28 @@ export default function EditProfile() {
   const [experience, setExperience] = useState('');
   const [skills, setSkills] = useState('');
   const [hourlyRate, setHourlyRate] = useState('');
+  const [preferredMeetingTimes, setPreferredMeetingTimes] = useState({});
   
   // Availability settings
   const [availableForMentoring, setAvailableForMentoring] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
+  
+  // Validation state
+  const [nameError, setNameError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [bioError, setBioError] = useState('');
+  const [hourlyRateError, setHourlyRateError] = useState('');
+  const [experienceError, setExperienceError] = useState('');
+  const [skillsError, setSkillsError] = useState('');
+  const [meetingTimesError, setMeetingTimesError] = useState('');
+  
+  // References for scrolling to error fields
+  const scrollViewRef = useRef(null);
+  const nameInputRef = useRef(null);
+  const emailInputRef = useRef(null);
+  const phoneInputRef = useRef(null);
+  const hourlyRateInputRef = useRef(null);
 
   // Load user profile data
   React.useEffect(() => {
@@ -69,12 +89,41 @@ export default function EditProfile() {
             const interests = profileData.interests ? JSON.parse(profileData.interests) : {};
             
             if (userType === 'mentor') {
-              setTitle(interests.title || '');
-              setCompany(interests.company || '');
-              setAvailableForMentoring(interests.availability || false);
-              setHourlyRate(interests.hourlyRate?.toString() || '');
+              setTitle(interests.title || profileData.current_title || '');
+              setCompany(interests.company || profileData.current_company || '');
+              setAvailableForMentoring(profileData.availability_status === 'available' || interests.availability === true || false);
+              setHourlyRate(profileData.hourly_rate?.toString() || interests.hourlyRate?.toString() || '');
+              
+              // Load preferred meeting times
+              try {
+                let meetingTimes = {};
+                // First check if it's in the profileData directly
+                if (profileData.preferred_meeting_times) {
+                  if (typeof profileData.preferred_meeting_times === 'string') {
+                    meetingTimes = JSON.parse(profileData.preferred_meeting_times);
+                  } else if (typeof profileData.preferred_meeting_times === 'object') {
+                    meetingTimes = profileData.preferred_meeting_times;
+                  }
+                } 
+                // Fall back to interests if needed
+                else if (interests.meetingTimes) {
+                  if (typeof interests.meetingTimes === 'string') {
+                    meetingTimes = JSON.parse(interests.meetingTimes);
+                  } else if (typeof interests.meetingTimes === 'object') {
+                    meetingTimes = interests.meetingTimes;
+                  }
+                }
+                
+                setPreferredMeetingTimes(meetingTimes);
+              } catch (e) {
+                console.warn('Failed to parse meeting times:', e);
+                setPreferredMeetingTimes({});
+              }
+              
               // Use expertise as skills if available
-              if (interests.expertise && Array.isArray(interests.expertise)) {
+              if (profileData.expertise_areas) {
+                setSkills(profileData.expertise_areas);
+              } else if (interests.expertise && Array.isArray(interests.expertise)) {
                 setSkills(interests.expertise.join(', '));
               }
             } else {
@@ -107,9 +156,109 @@ export default function EditProfile() {
     loadProfile();
   }, [user?.id]);
 
+  // Validation functions
+  const isValidEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+  
+  const isValidPhone = (phone) => {
+    // Allow empty phone as it's optional
+    if (!phone) return true;
+    // Basic phone validation - adjust regex as needed for your region's format
+    const phoneRegex = /^[\d\s+()-]{8,15}$/;
+    return phoneRegex.test(phone);
+  };
+  
+  const sanitizeNumericInput = (value, allowDecimal = false) => {
+    if (allowDecimal) {
+      // Allow one decimal point and digits
+      return value.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1');
+    } else {
+      // Allow only digits
+      return value.replace(/[^\d]/g, '');
+    }
+  };
+  
+  const validateFields = () => {
+    let isValid = true;
+    
+    // Reset all errors first
+    setNameError('');
+    setEmailError('');
+    setPhoneError('');
+    setBioError('');
+    setHourlyRateError('');
+    setExperienceError('');
+    setSkillsError('');
+    setMeetingTimesError('');
+    
+    // Validate name (required)
+    if (!name.trim()) {
+      setNameError('Name is required');
+      isValid = false;
+    } else if (name.trim().length < 2) {
+      setNameError('Name must be at least 2 characters');
+      isValid = false;
+    }
+    
+    // Validate email (required)
+    if (!email.trim()) {
+      setEmailError('Email is required');
+      isValid = false;
+    } else if (!isValidEmail(email)) {
+      setEmailError('Please enter a valid email address');
+      isValid = false;
+    }
+    
+    // Validate phone (optional but must be valid if provided)
+    if (phone && !isValidPhone(phone)) {
+      setPhoneError('Please enter a valid phone number');
+      isValid = false;
+    }
+    
+    // Validate bio (optional but max length)
+    if (bio && bio.length > 500) {
+      setBioError('Bio must be less than 500 characters');
+      isValid = false;
+    }
+    
+    // Mentor specific validations
+    if (userType === 'mentor') {
+      // Validate hourly rate
+      if (availableForMentoring && !hourlyRate) {
+        setHourlyRateError('Hourly rate is required when available for mentoring');
+        isValid = false;
+      } else if (hourlyRate && (isNaN(parseFloat(hourlyRate)) || parseFloat(hourlyRate) < 0)) {
+        setHourlyRateError('Please enter a valid positive number');
+        isValid = false;
+      }
+      
+      // Validate experience
+      if (experience && (isNaN(parseInt(experience)) || parseInt(experience) < 0)) {
+        setExperienceError('Please enter a valid number of years');
+        isValid = false;
+      }
+      
+      // Validate skills
+      if (!skills.trim() && availableForMentoring) {
+        setSkillsError('Please enter at least one skill or expertise area');
+        isValid = false;
+      }
+      
+      // Validate meeting times
+      if (availableForMentoring && (!preferredMeetingTimes || Object.keys(preferredMeetingTimes).length === 0)) {
+        setMeetingTimesError('Please set at least one available meeting time');
+        isValid = false;
+      }
+    }
+    
+    return isValid;
+  };
+
   const handleSave = async () => {
-    if (!name || !email) {
-      Alert.alert(t('error'), 'Name and email are required fields.');
+    if (!validateFields()) {
+      Alert.alert(t('error'), 'Please correct the errors in the form before saving.');
       return;
     }
 
@@ -137,11 +286,15 @@ export default function EditProfile() {
           hourly_rate: hourlyRate ? parseFloat(hourlyRate) : null,
           years_of_experience: experience ? parseInt(experience) : null,
           expertise_areas: skills,
-          preferred_communication: 'in-app'
+          preferred_communication: 'in-app',
+          // Stringify meeting times for database storage
+          preferred_meeting_times: availableForMentoring && Object.keys(preferredMeetingTimes).length > 0 
+            ? JSON.stringify(preferredMeetingTimes) 
+            : null
         } : {
           career_goals: bio || null,
-          preferred_meeting_times: null, // To be implemented in UI
-          learning_style: null, // To be implemented in UI
+          preferred_meeting_times: null,
+          learning_style: null,
           target_role: title || null
         })
       };
@@ -250,34 +403,89 @@ export default function EditProfile() {
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Full Name *</Text>
             <TextInput
-              style={styles.input}
+              ref={nameInputRef}
+              style={[
+                styles.input, 
+                nameError ? styles.inputError : null
+              ]}
               value={name}
-              onChangeText={setName}
+              onChangeText={(text) => {
+                setName(text);
+                if (text.trim()) {
+                  setNameError('');
+                }
+              }}
+              onBlur={() => {
+                if (!name.trim()) {
+                  setNameError('Name is required');
+                } else if (name.trim().length < 2) {
+                  setNameError('Name must be at least 2 characters');
+                }
+              }}
               placeholder="Enter your full name"
             />
+            {nameError ? (
+              <Text style={styles.errorText}>{nameError}</Text>
+            ) : null}
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Email *</Text>
             <TextInput
-              style={styles.input}
+              ref={emailInputRef}
+              style={[
+                styles.input, 
+                emailError ? styles.inputError : null
+              ]}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (isValidEmail(text) || text === '') {
+                  setEmailError('');
+                }
+              }}
+              onBlur={() => {
+                if (!email.trim()) {
+                  setEmailError('Email is required');
+                } else if (!isValidEmail(email)) {
+                  setEmailError('Please enter a valid email address');
+                }
+              }}
               placeholder="Enter your email"
               keyboardType="email-address"
               autoCapitalize="none"
             />
+            {emailError ? (
+              <Text style={styles.errorText}>{emailError}</Text>
+            ) : null}
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Phone Number</Text>
             <TextInput
-              style={styles.input}
+              ref={phoneInputRef}
+              style={[
+                styles.input, 
+                phoneError ? styles.inputError : null
+              ]}
               value={phone}
-              onChangeText={setPhone}
+              onChangeText={(text) => {
+                setPhone(text);
+                if (isValidPhone(text) || text === '') {
+                  setPhoneError('');
+                }
+              }}
+              onBlur={() => {
+                if (phone && !isValidPhone(phone)) {
+                  setPhoneError('Please enter a valid phone number');
+                }
+              }}
               placeholder="Enter your phone number"
               keyboardType="phone-pad"
             />
+            {phoneError ? (
+              <Text style={styles.errorText}>{phoneError}</Text>
+            ) : null}
           </View>
 
           <View style={styles.inputContainer}>
@@ -330,24 +538,61 @@ export default function EditProfile() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Experience</Text>
+              <Text style={styles.inputLabel}>Experience (years)</Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  experienceError ? styles.inputError : null
+                ]}
                 value={experience}
-                onChangeText={setExperience}
-                placeholder="e.g., 5 years"
+                onChangeText={(text) => {
+                  // Only allow numbers
+                  const sanitized = sanitizeNumericInput(text, false);
+                  setExperience(sanitized);
+                  
+                  if (!text || (text && !isNaN(parseInt(text)) && parseInt(text) >= 0)) {
+                    setExperienceError('');
+                  }
+                }}
+                onBlur={() => {
+                  if (experience && (isNaN(parseInt(experience)) || parseInt(experience) < 0)) {
+                    setExperienceError('Please enter a valid number of years');
+                  }
+                }}
+                placeholder="e.g., 5"
+                keyboardType="numeric"
               />
+              {experienceError ? (
+                <Text style={styles.errorText}>{experienceError}</Text>
+              ) : null}
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Skills</Text>
+              <Text style={styles.inputLabel}>Skills{availableForMentoring ? ' *' : ''}</Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  skillsError ? styles.inputError : null
+                ]}
                 value={skills}
-                onChangeText={setSkills}
+                onChangeText={(text) => {
+                  setSkills(text);
+                  if (text.trim() || !availableForMentoring) {
+                    setSkillsError('');
+                  }
+                }}
+                onBlur={() => {
+                  if (!skills.trim() && availableForMentoring) {
+                    setSkillsError('Please enter at least one skill or expertise area');
+                  }
+                }}
                 placeholder="Enter skills separated by commas"
               />
-              <Text style={styles.helpText}>Separate multiple skills with commas</Text>
+              {skillsError ? (
+                <Text style={styles.errorText}>{skillsError}</Text>
+              ) : (
+                <Text style={styles.helpText}>Separate multiple skills with commas</Text>
+              )}
             </View>
           </View>
         )}
@@ -358,15 +603,39 @@ export default function EditProfile() {
             <Text style={styles.sectionTitle}>Mentoring Settings</Text>
             
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Hourly Rate (MMK)</Text>
+              <Text style={styles.inputLabel}>Hourly Rate (MMK){availableForMentoring ? ' *' : ''}</Text>
               <TextInput
-                style={styles.input}
+                ref={hourlyRateInputRef}
+                style={[
+                  styles.input, 
+                  hourlyRateError ? styles.inputError : null
+                ]}
                 value={hourlyRate}
-                onChangeText={setHourlyRate}
+                onChangeText={(text) => {
+                  // Only allow numbers and decimal point
+                  const sanitized = sanitizeNumericInput(text, true);
+                  setHourlyRate(sanitized);
+                  if (sanitized || !availableForMentoring) {
+                    setHourlyRateError('');
+                  }
+                }}
+                onBlur={() => {
+                  if (availableForMentoring && !hourlyRate) {
+                    setHourlyRateError('Hourly rate is required when available for mentoring');
+                  } else if (hourlyRate && (isNaN(parseFloat(hourlyRate)) || parseFloat(hourlyRate) < 0)) {
+                    setHourlyRateError('Please enter a valid positive number');
+                  }
+                }}
                 placeholder="Enter hourly rate"
                 keyboardType="numeric"
               />
-              <Text style={styles.helpText}>Leave empty if offering free mentoring</Text>
+              {hourlyRateError ? (
+                <Text style={styles.errorText}>{hourlyRateError}</Text>
+              ) : (
+                <Text style={styles.helpText}>
+                  {availableForMentoring ? 'Required when you are available for mentoring' : 'Leave empty if offering free mentoring'}
+                </Text>
+              )}
             </View>
 
             <View style={styles.switchContainer}>
@@ -378,6 +647,34 @@ export default function EditProfile() {
                 thumbColor={availableForMentoring ? '#fff' : '#f4f3f4'}
               />
             </View>
+            
+            {/* Meeting Time Selector - only shown when mentor is available */}
+            {availableForMentoring && (
+              <View style={styles.meetingTimesContainer}>
+                <Text style={styles.meetingTimesLabel}>Set Your Available Meeting Times</Text>
+                <Text style={styles.helpText}>
+                  Select dates and times when you're available for mentoring sessions.
+                </Text>
+                
+                <MeetingTimeSelector
+                  value={preferredMeetingTimes}
+                  onChange={(times) => {
+                    console.log('Meeting times updated:', times);
+                    setPreferredMeetingTimes(times);
+                    if (Object.keys(times).length > 0) {
+                      setMeetingTimesError('');
+                    }
+                  }}
+                  maxDays={30} // Limit to 1 month ahead
+                />
+                
+                {meetingTimesError ? (
+                  <Text style={[styles.errorText, styles.meetingTimesError]}>
+                    {meetingTimesError}
+                  </Text>
+                ) : null}
+              </View>
+            )}
           </View>
         )}
 
@@ -588,5 +885,32 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Validation styles
+  inputError: {
+    borderColor: '#ff3b30',
+    borderWidth: 1,
+  },
+  errorText: {
+    color: '#ff3b30',
+    fontSize: 12,
+    marginTop: 5,
+  },
+  meetingTimesContainer: {
+    marginTop: 20,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  meetingTimesLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  meetingTimesError: {
+    marginTop: 10,
+    marginBottom: 5,
+    fontSize: 13,
   },
 });

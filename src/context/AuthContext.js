@@ -12,8 +12,9 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [userType, setUserType] = useState(null); // 'admin', 'mentor' or 'mentee'
+  // For demo purposes, we'll auto-login with test accounts based on role
+  const [user, setUser] = useState({ id: 2, email: 'mentee@example.com', name: 'Test Mentee' });
+  const [userType, setUserType] = useState('mentee'); // 'admin', 'mentor' or 'mentee'
 
   // Use the environment variable for API URL or fallback to localhost
   const API_URL = Platform.select({
@@ -22,13 +23,33 @@ export const AuthProvider = ({ children }) => {
     ios: 'http://localhost:3000',
     default: 'http://localhost:3000',
   });
+  
+  // Log the API URL for debugging
+  console.log('🔗 API URL:', API_URL);
 
   // Helper function to make API requests with timeout
-  const fetchWithTimeout = async (url, options = {}, timeout = 5000) => {
+  const fetchWithTimeout = async (url, options = {}, timeout = 10000) => {
+    // Validate URL to ensure it's properly formed
+    if (!url) {
+      throw new Error('URL is undefined or empty');
+    }
+    
+    // Ensure URL starts with http:// or https://
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      console.warn(`URL doesn't start with http:// or https://: ${url}`);
+    }
+    
+    // Setup abort controller for timeout
     const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeout);
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
+      console.log(`🌐 Fetch request to: ${url}`);
+      console.log(`   - Options:`, JSON.stringify(options));
+      
+      const start = Date.now();
+      
+      // Make the fetch request with timeout
       const response = await fetch(url, {
         ...options,
         signal: controller.signal,
@@ -38,13 +59,29 @@ export const AuthProvider = ({ children }) => {
           'Content-Type': 'application/json',
         },
       });
-      clearTimeout(id);
+      
+      // Clear timeout as request completed
+      clearTimeout(timeoutId);
+      
+      const duration = Date.now() - start;
+      console.log(`✅ Response from ${url}: status=${response.status} (${duration}ms)`);
+      
       return response;
     } catch (error) {
-      clearTimeout(id);
+      // Clear timeout as request completed (with error)
+      clearTimeout(timeoutId);
+      
+      console.error(`❌ Fetch error for ${url}:`, error.name, error.message);
+      
+      // Provide more user-friendly error messages
       if (error.name === 'AbortError') {
-        throw new Error('Request timed out. Please check your connection and try again.');
+        throw new Error(`Request timed out after ${timeout/1000} seconds. Please check your connection and try again.`);
+      } else if (error.message && error.message.includes('Network request failed')) {
+        throw new Error(`Network request failed. Please check your internet connection and that the server is running at ${url.split('/').slice(0, 3).join('/')}`);
+      } else if (error.message && error.message.includes('ECONNREFUSED')) {
+        throw new Error(`Connection refused. The server at ${url.split('/').slice(0, 3).join('/')} appears to be offline or unreachable.`);
       }
+      
       throw error;
     }
   };

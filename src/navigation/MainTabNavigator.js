@@ -7,6 +7,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import MenteeStack from './MenteeStack';
 import EmailTestScreen from '../screens/EmailTestScreen';
 import SimpleDiscoverScreen from '../screens/SimpleDiscoverScreen';
+import CareerMapStack from './CareerMapStack';
 import { useLanguage } from '../context/LanguageContext';
 
 const Tab = createBottomTabNavigator();
@@ -30,6 +31,8 @@ export default function MainTabNavigator() {
             iconName = focused ? 'person' : 'person-outline';
           } else if (route.name === 'EmailTest') {
             iconName = focused ? 'mail' : 'mail-outline';
+          } else if (route.name === 'Career') {
+            iconName = focused ? 'map' : 'map-outline';
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -84,6 +87,15 @@ export default function MainTabNavigator() {
         options={{ 
           title: '📧 Email Test',
           tabBarLabel: 'Email Test'
+        }}
+      />
+      <Tab.Screen 
+        name="Career" 
+        component={CareerMapStack}
+        options={{ 
+          headerShown: false,
+          title: 'Career Map',
+          tabBarLabel: 'Career'
         }}
       />
     </Tab.Navigator>

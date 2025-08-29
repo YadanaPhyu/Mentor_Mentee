@@ -20,7 +20,6 @@ export default function AppNavigator() {
         animation: 'fade',
         gestureEnabled: false // Disable gesture navigation during auth state changes
       }}
-      initialRouteName="Auth"
     >
       {!user ? (
         // Auth Stack

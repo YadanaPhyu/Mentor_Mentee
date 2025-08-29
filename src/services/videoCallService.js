@@ -34,6 +34,16 @@ class VideoCallService {
         return this.generateJitsiLink(session, roomName);
     }
   }
+  
+  /**
+   * Simple method to generate just a meeting URL without the full object
+   * @param {string} sessionId - Session ID to use in the URL
+   * @returns {string} - Meeting URL
+   */
+  generateMeetingUrl(sessionId) {
+    const sanitizedRoomName = `mentor-session-${sessionId}`.replace(/[^a-zA-Z0-9-]/g, '');
+    return `https://meet.jit.si/${sanitizedRoomName}`;
+  }
 
   /**
    * Generate Google Meet link (requires Google Calendar API integration)

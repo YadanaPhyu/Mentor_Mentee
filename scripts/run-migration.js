@@ -35,12 +35,15 @@ if (missingEnvVars.length > 0) {
 
 async function runMigration() {
     try {
+        // Get migration file from command line args or default to latest
+        const migrationFile = process.argv[2] || '006_add_sessions_table.sql';
+        
         // Connect to database
         await sql.connect(config);
-        console.log('Connected to database');
+        console.log(`Connected to database, running migration: ${migrationFile}`);
 
         // Read and execute the migration file
-        const migrationPath = path.join(__dirname, '..', 'database', 'migrations', '005_add_profile_fields.sql');
+        const migrationPath = path.join(__dirname, '..', 'database', 'migrations', migrationFile);
         const migrationSql = await fs.readFile(migrationPath, 'utf8');
 
         // Split the migration into individual statements

@@ -4,298 +4,369 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Modal,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Calendar } from 'react-native-calendars';
 
-const TIME_SLOTS = [
-  '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
-  '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM',
-  '5:00 PM', '6:00 PM'
-];
-
-export default function MeetingTimeSelector({ value, onChange }) {
-  const [modalVisible, setModalVisible] = useState(false);
+/**
+ * A component for selecting and managing meeting times
+ * Allows users to select available times within the next month
+ */
+const MeetingTimeSelector = ({ 
+  value = {},  // Initial value - object with date keys and array of time slots
+  onChange,    // Callback when value changes
+  maxDays = 30, // Max number of days to show (default 30 - a month)
+}) => {
   const [selectedDate, setSelectedDate] = useState(null);
-  const [availability, setAvailability] = useState(() => {
-    if (!value) return {};
-    try {
-      return typeof value === 'string' ? JSON.parse(value) : value;
-    } catch (e) {
-      console.warn('Failed to parse initial availability:', e);
-      return {};
-    }
-  });
-  
-  // Set up the date range for the calendar
-  const today = new Date();
-  const maxDate = new Date();
-  maxDate.setDate(today.getDate() + 30); // 1 month window
+  const [availableDates, setAvailableDates] = useState([]);
+  const [meetingTimes, setMeetingTimes] = useState(value || {});
 
+  // Generate available dates (current date + next 30 days)
   useEffect(() => {
-    try {
-      // Handle all possible input cases
-      if (!value) {
-        console.log('No availability value provided, setting to empty object');
-        setAvailability({});
-      } else if (typeof value === 'string') {
-        if (value === '{}' || value === 'null') {
-          console.log('Empty availability string provided, setting to empty object');
-          setAvailability({});
-        } else {
-          console.log('Parsing availability string:', value);
-          const parsedValue = JSON.parse(value);
-          setAvailability(parsedValue);
-        }
-      } else if (typeof value === 'object') {
-        console.log('Setting availability from object:', value);
-        setAvailability(value);
-      }
-    } catch (e) {
-      console.warn('Failed to parse availability value:', e, 'Raw value:', value);
-      setAvailability({});
-      // Pass back valid empty object to parent
-      onChange('{}');
-    }
-  }, [value]);
-
-  const toggleTimeSlot = (date, time) => {
-    const dateStr = date.toISOString().split('T')[0];
-    const dateTimes = availability[dateStr] || [];
-    const newDateTimes = dateTimes.includes(time)
-      ? dateTimes.filter(t => t !== time)
-      : [...dateTimes, time].sort();
-
-    const newAvailability = {
-      ...availability,
-      [dateStr]: newDateTimes
-    };
-
-    if (newDateTimes.length === 0) {
-      delete newAvailability[dateStr];
-    }
-
-    console.log('Updated availability:', newAvailability);
-    setAvailability(newAvailability);
+    const today = new Date();
+    const dates = [];
     
-    // Always return a valid JSON string to the parent
-    try {
-      const jsonString = JSON.stringify(newAvailability);
-      console.log('Sending availability to parent:', jsonString);
-      onChange(jsonString);
-    } catch (e) {
-      console.error('Error stringifying availability:', e);
-      onChange('{}');
+    for (let i = 0; i < maxDays; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      dates.push(date);
     }
+    
+    setAvailableDates(dates);
+    
+    // If no date is selected, select today by default
+    if (!selectedDate) {
+      setSelectedDate(formatDate(today));
+    }
+  }, [maxDays]);
+
+  // Time slots to choose from
+  const timeSlots = [
+    '09:00', '10:00', '11:00', '12:00', '13:00', 
+    '14:00', '15:00', '16:00', '17:00', '18:00'
+  ];
+
+  // Format date to YYYY-MM-DD string
+  const formatDate = (date) => {
+    return date.toISOString().split('T')[0];
   };
 
-  const getAvailabilityDisplay = () => {
-    const dates = Object.keys(availability);
-    if (dates.length === 0) return 'Click to set your availability';
-    
-    return dates
-      .sort()
-      .map(date => {
-        const formattedDate = new Date(date).toLocaleDateString();
-        return `${formattedDate}: ${availability[date].map(time => time.replace(':00', '')).join(', ')}`;
-      })
-      .join('\n');
-  };
-
-  const getMarkedDates = () => {
-    const marked = {};
-    Object.keys(availability).forEach(date => {
-      marked[date] = { marked: true, dotColor: '#2196F3' };
+  // Format date for display (e.g., "Mon, 28 Aug")
+  const formatDateDisplay = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short', 
+      day: 'numeric',
+      month: 'short'
     });
-    if (selectedDate) {
-      marked[selectedDate] = {
-        ...marked[selectedDate],
-        selected: true,
-        selectedColor: '#2196F3'
-      };
-    }
-    return marked;
+  };
+
+  // Handle time slot selection/deselection
+  const toggleTimeSlot = (time) => {
+    if (!selectedDate) return;
+    
+    setMeetingTimes(prev => {
+      const newMeetingTimes = { ...prev };
+      
+      // Initialize array for this date if it doesn't exist
+      if (!newMeetingTimes[selectedDate]) {
+        newMeetingTimes[selectedDate] = [];
+      }
+      
+      // Toggle the time slot
+      if (newMeetingTimes[selectedDate].includes(time)) {
+        newMeetingTimes[selectedDate] = newMeetingTimes[selectedDate]
+          .filter(t => t !== time);
+          
+        // Remove the date key if no times are selected
+        if (newMeetingTimes[selectedDate].length === 0) {
+          delete newMeetingTimes[selectedDate];
+        }
+      } else {
+        newMeetingTimes[selectedDate].push(time);
+        // Sort times chronologically
+        newMeetingTimes[selectedDate].sort();
+      }
+      
+      // Call onChange with the updated meeting times
+      if (onChange) {
+        onChange(newMeetingTimes);
+      }
+      
+      return newMeetingTimes;
+    });
+  };
+
+  // Check if a time slot is selected for the current date
+  const isTimeSelected = (time) => {
+    return selectedDate && 
+      meetingTimes[selectedDate] && 
+      meetingTimes[selectedDate].includes(time);
+  };
+
+  // Handle date selection
+  const handleDateSelect = (dateString) => {
+    setSelectedDate(dateString);
+  };
+
+  // Clear all meeting times
+  const clearAllTimes = () => {
+    Alert.alert(
+      "Clear All Times", 
+      "Are you sure you want to clear all selected meeting times?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Clear All", 
+          style: "destructive",
+          onPress: () => {
+            setMeetingTimes({});
+            if (onChange) {
+              onChange({});
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        style={styles.selector}
-        onPress={() => setModalVisible(true)}
+      <View style={styles.header}>
+        <Text style={styles.title}>Select Available Meeting Times</Text>
+        {Object.keys(meetingTimes).length > 0 && (
+          <TouchableOpacity 
+            style={styles.clearButton} 
+            onPress={clearAllTimes}
+          >
+            <Text style={styles.clearButtonText}>Clear All</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      
+      {/* Date selector */}
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={styles.dateSelector}
       >
-        <View style={styles.selectorContent}>
-          <Text style={styles.label}>Available Meeting Times</Text>
-          <Text style={styles.value} numberOfLines={5}>{getAvailabilityDisplay()}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={24} color="#666" />
-      </TouchableOpacity>
-
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => {
-          setSelectedDate(null);
-          setModalVisible(false);
-        }}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Set Your Availability</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setSelectedDate(null);
-                  setModalVisible(false);
-                }}
-                style={styles.closeButton}
+        {availableDates.map((date) => {
+          const dateString = formatDate(date);
+          const isSelected = dateString === selectedDate;
+          const hasTimeSlots = meetingTimes[dateString] && meetingTimes[dateString].length > 0;
+          
+          return (
+            <TouchableOpacity
+              key={dateString}
+              style={[
+                styles.dateItem,
+                isSelected && styles.selectedDateItem,
+                hasTimeSlots && styles.dateWithTimes
+              ]}
+              onPress={() => handleDateSelect(dateString)}
+            >
+              <Text 
+                style={[
+                  styles.dateText,
+                  isSelected && styles.selectedDateText
+                ]}
               >
-                <Ionicons name="close" size={24} color="#000" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView>
-              <Calendar
-                minDate={today.toISOString().split('T')[0]}
-                maxDate={maxDate.toISOString().split('T')[0]}
-                onDayPress={(day) => setSelectedDate(day.dateString)}
-                markedDates={getMarkedDates()}
-                theme={{
-                  selectedDayBackgroundColor: '#2196F3',
-                  dotColor: '#2196F3',
-                  todayTextColor: '#2196F3',
-                }}
-              />
-              {selectedDate && (
-                <View style={styles.timeSelectionContainer}>
-                  <Text style={styles.selectedDateText}>
-                    {new Date(selectedDate).toLocaleDateString()}
-                  </Text>
-                  <View style={styles.timeGrid}>
-                    {TIME_SLOTS.map(time => {
-                      const isSelected = (availability[selectedDate] || []).includes(time);
-                      return (
-                        <TouchableOpacity
-                          key={time}
-                          style={[
-                            styles.timeSlot,
-                            isSelected && styles.selectedTimeSlot
-                          ]}
-                          onPress={() => toggleTimeSlot(new Date(selectedDate), time)}
-                        >
-                          <Text style={[
-                            styles.timeText,
-                            isSelected && styles.selectedTimeText
-                          ]}>
-                            {time.replace(':00', '')}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
+                {formatDateDisplay(dateString)}
+              </Text>
+              {hasTimeSlots && (
+                <View style={styles.timeIndicator}>
+                  <Text style={styles.timeCount}>{meetingTimes[dateString].length}</Text>
                 </View>
               )}
-            </ScrollView>
-          </View>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+      
+      {/* Time slots */}
+      <View style={styles.timeSlotsContainer}>
+        <Text style={styles.subtitle}>
+          {selectedDate ? `Available times for ${formatDateDisplay(selectedDate)}` : 'Select a date'}
+        </Text>
+        
+        <View style={styles.timeSlots}>
+          {timeSlots.map((time) => (
+            <TouchableOpacity
+              key={time}
+              style={[
+                styles.timeSlot,
+                isTimeSelected(time) && styles.selectedTimeSlot
+              ]}
+              onPress={() => toggleTimeSlot(time)}
+            >
+              <Text 
+                style={[
+                  styles.timeText,
+                  isTimeSelected(time) && styles.selectedTimeText
+                ]}
+              >
+                {time}
+              </Text>
+              {isTimeSelected(time) && (
+                <Ionicons name="checkmark-circle" size={18} color="white" style={styles.checkIcon} />
+              )}
+            </TouchableOpacity>
+          ))}
         </View>
-      </Modal>
+      </View>
+      
+      {/* Summary of selected times */}
+      {Object.keys(meetingTimes).length > 0 && (
+        <View style={styles.summary}>
+          <Text style={styles.summaryTitle}>Your Available Times:</Text>
+          <ScrollView style={styles.summaryContent}>
+            {Object.entries(meetingTimes).map(([date, times]) => (
+              <View key={date} style={styles.summaryItem}>
+                <Text style={styles.summaryDate}>{formatDateDisplay(date)}:</Text>
+                <Text style={styles.summaryTimes}>{times.join(', ')}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 15,
-  },
-  selector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
     backgroundColor: '#f8f9fa',
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
+    padding: 15,
+    marginBottom: 20,
   },
-  selectorContent: {
-    flex: 1,
-    marginRight: 10,
-  },
-  label: {
-    fontSize: 16,
-    color: '#212529',
-    marginBottom: 5,
-    fontWeight: '600',
-  },
-  value: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    flex: 1,
-    backgroundColor: '#fff',
-    marginTop: 50,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  modalHeader: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    marginBottom: 15,
   },
-  modalTitle: {
-    fontSize: 20,
+  title: {
+    fontSize: 16,
     fontWeight: '600',
-    color: '#212529',
+    color: '#333',
   },
-  closeButton: {
+  clearButton: {
     padding: 5,
   },
-  timeSelectionContainer: {
-    padding: 15,
+  clearButtonText: {
+    color: '#dc3545',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  dateSelector: {
+    flexGrow: 0,
+    marginBottom: 20,
+  },
+  dateItem: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#e9ecef',
+    borderRadius: 20,
+    marginRight: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  selectedDateItem: {
+    backgroundColor: '#667eea',
+  },
+  dateWithTimes: {
+    borderWidth: 1,
+    borderColor: '#667eea',
+  },
+  dateText: {
+    fontSize: 14,
+    color: '#495057',
   },
   selectedDateText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#212529',
-    marginBottom: 15,
-    textAlign: 'center',
+    color: '#fff',
+    fontWeight: '500',
   },
-  timeGrid: {
+  timeIndicator: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#28a745',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  timeCount: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  timeSlotsContainer: {
+    marginBottom: 20,
+  },
+  subtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 10,
+    color: '#495057',
+  },
+  timeSlots: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 10,
-    padding: 10,
   },
   timeSlot: {
-    width: '22%',
-    aspectRatio: 2,
-    justifyContent: 'center',
+    width: '30%',
+    backgroundColor: '#e9ecef',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    marginRight: '3%',
+    marginBottom: 10,
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
+    justifyContent: 'center',
+    flexDirection: 'row',
   },
   selectedTimeSlot: {
-    backgroundColor: '#2196F3',
-    borderColor: '#2196F3',
+    backgroundColor: '#667eea',
   },
   timeText: {
     fontSize: 14,
-    color: '#212529',
+    color: '#495057',
   },
   selectedTimeText: {
     color: '#fff',
   },
+  checkIcon: {
+    marginLeft: 5,
+  },
+  summary: {
+    backgroundColor: '#e9ecef',
+    borderRadius: 8,
+    padding: 10,
+  },
+  summaryTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 5,
+  },
+  summaryContent: {
+    maxHeight: 100,
+  },
+  summaryItem: {
+    flexDirection: 'row',
+    marginBottom: 5,
+  },
+  summaryDate: {
+    fontWeight: '500',
+    marginRight: 5,
+  },
+  summaryTimes: {
+    flex: 1,
+  },
 });
+
+export default MeetingTimeSelector;

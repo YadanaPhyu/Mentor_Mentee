@@ -2,9 +2,11 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import MentorStack from './MentorStack'; // The tab navigator
 import SessionBookingRequests from '../screens/mentor/SessionBookingRequests';
+import SessionRequests from '../screens/mentor/SessionRequests';
 import SessionDetails from '../screens/mentor/SessionDetails';
 import MentorshipRequests from '../screens/mentor/MentorshipRequests';
 import ManageAvailability from '../screens/mentor/ManageAvailability';
+import NewSessionDetails from '../screens/mentor/NewSessionDetails';
 
 const Stack = createNativeStackNavigator();
 
@@ -29,11 +31,21 @@ export default function MentorMainStack() {
       <Stack.Screen
         name="SessionBookingRequests"
         component={SessionBookingRequests}
+        options={{ title: 'Session Requests (Legacy)' }}
+      />
+      <Stack.Screen
+        name="SessionRequests"
+        component={SessionRequests}
         options={{ title: 'Session Requests' }}
       />
       <Stack.Screen
         name="SessionDetails"
         component={SessionDetails}
+        options={{ title: 'Session Details' }}
+      />
+      <Stack.Screen
+        name="NewSessionDetails"
+        component={NewSessionDetails}
         options={{ title: 'Session Details' }}
       />
       <Stack.Screen

@@ -14,6 +14,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import VideoCallService from '../../services/videoCallService';
 import EmailService from '../../services/emailService';
+import SessionRequestCard from '../../components/SessionRequestCard';
 
 export default function SessionBookingRequests({ navigation }) {
   const { t } = useLanguage();
@@ -32,13 +33,13 @@ export default function SessionBookingRequests({ navigation }) {
         setLoading(true);
         setError(null);
         
-        // Assume we're logged in as a mentor - in real app, get user ID from auth context
+        // Get mentor ID from auth context
         const mentorId = user?.id || 1; // Use test value if not available
         
-        console.log(`Fetching session requests for mentor ${mentorId}: ${API_URL}/api/sessions?user_id=${mentorId}&role=mentor`);
+        console.log(`Fetching session requests for mentor ${mentorId}: ${API_URL}/api/sessions/user/${mentorId}?role=mentor&status=pending_approval`);
         
         const response = await fetchWithTimeout(
-          `${API_URL}/api/sessions?user_id=${mentorId}&role=mentor`
+          `${API_URL}/api/sessions/user/${mentorId}?role=mentor&status=pending_approval`
         );
         
         if (!response.ok) {
@@ -54,7 +55,9 @@ export default function SessionBookingRequests({ navigation }) {
           id: session.id, // Keep as number to avoid type conversion issues
           rawId: session.id, // Store the raw ID separately for API calls
           mentee: {
+            id: session.mentee_id,
             name: session.mentee_name || 'Unknown Mentee',
+            title: session.mentee_title || '',
             email: session.mentee_email || 'email@example.com',
             avatar: null,
             experience: 'Not specified'
@@ -63,7 +66,7 @@ export default function SessionBookingRequests({ navigation }) {
           requestedTime: session.session_time,
           duration: session.duration_minutes || 60,
           topic: session.topic || 'General mentoring session',
-          fee: session.fee_amount || 0,
+          fee: session.session_fee || 0,
           status: session.status,
           requestedAt: session.created_at,
           confirmedAt: session.updated_at,
@@ -120,7 +123,7 @@ export default function SessionBookingRequests({ navigation }) {
     try {
       console.log('🟢 Mentor accepting session request:', request.id);
       
-      // Update session status to confirmed via API
+      // Update session status to approved via API
       const sessionId = Number(request.id); // Convert to number to ensure proper API call
       console.log(`Updating session status: ${API_URL}/api/sessions/${sessionId}/status`);
       const response = await fetchWithTimeout(`${API_URL}/api/sessions/${sessionId}/status`, {
@@ -129,7 +132,7 @@ export default function SessionBookingRequests({ navigation }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          status: 'confirmed',
+          status: 'approved',
           userId: user?.id || 1,  // Add user ID
           userRole: 'mentor'      // Add user role
         }),
@@ -164,10 +167,10 @@ export default function SessionBookingRequests({ navigation }) {
         console.warn('Failed to update meeting URL, but session is confirmed');
       }
       
-      // Create confirmed session object for UI
+      // Create approved session object for UI
       const sessionWithVideoCall = {
         ...request,
-        status: 'confirmed',
+        status: 'approved',
         confirmedAt: new Date().toISOString(),
         hasVideoCall: true,
         videoCall: {

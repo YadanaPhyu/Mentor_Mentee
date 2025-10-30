@@ -128,13 +128,13 @@ export default function MentorHomeScreen({ navigation }) {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Session Booking Requests</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('SessionBookingRequests')}>
+          <TouchableOpacity onPress={() => navigation.navigate('SessionRequests')}>
             <Text style={styles.viewAllText}>View All</Text>
           </TouchableOpacity>
         </View>
         <TouchableOpacity 
           style={styles.quickAccessCard}
-          onPress={() => navigation.navigate('SessionBookingRequests')}
+          onPress={() => navigation.navigate('SessionRequests')}
         >
           <View style={styles.quickAccessContent}>
             <Ionicons name="calendar-outline" size={32} color="#667eea" />

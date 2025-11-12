@@ -62,8 +62,8 @@ export default function SessionBookingRequests({ navigation }) {
             avatar: null,
             experience: 'Not specified'
           },
-          requestedDate: session.session_date,
-          requestedTime: session.session_time,
+          requestedDate: formatSessionDateTime(session.session_date, session.session_time),
+          requestedTime: formatTime(session.session_time),
           duration: session.duration_minutes || 60,
           topic: session.topic || 'General mentoring session',
           fee: session.session_fee || 0,
@@ -321,12 +321,58 @@ export default function SessionBookingRequests({ navigation }) {
     }
   };
 
+  // Format date for display
   const formatDate = (dateString) => {
+    if (!dateString) return 'Unknown';
     const date = new Date(dateString);
-    return date.toLocaleDateString() + ' at ' + date.toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    if (isNaN(date.getTime())) return dateString;
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    }).format(date);
+  };
+
+  // Format session date and time from database format
+  const formatSessionDateTime = (dateStr, timeStr) => {
+    if (!dateStr) return 'Unknown';
+    
+    try {
+      let fullDateTime;
+      if (timeStr) {
+        fullDateTime = `${dateStr} ${timeStr}`;
+      } else {
+        fullDateTime = dateStr;
+      }
+      const date = new Date(fullDateTime);
+      if (isNaN(date.getTime())) {
+        return `${dateStr} ${timeStr || ''}`;
+      }
+      return new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      }).format(date);
+    } catch (e) {
+      return `${dateStr} ${timeStr || ''}`;
+    }
+  };
+
+  // Format time for display (HH:mm:ss to 12-hour or pass through if already formatted)
+  const formatTime = (timeStr) => {
+    if (!timeStr) return '';
+    // If already in 12-hour format (e.g., "12:00 PM"), return as-is
+    if (/AM|PM/i.test(timeStr)) return timeStr;
+    // Otherwise, convert from 24-hour format
+    const match = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) return timeStr;
+    let h = parseInt(match[1], 10);
+    const m = match[2];
+    const suffix = h >= 12 ? 'PM' : 'AM';
+    h = ((h + 11) % 12) + 1;
+    return `${h}:${m} ${suffix}`;
   };
 
   const pendingRequests = bookingRequests.filter(req => req.status === 'pending_mentor_approval');
@@ -353,32 +399,30 @@ export default function SessionBookingRequests({ navigation }) {
       
       const data = await response.json();
       
-      // Transform API data to match our component format
-      const formattedRequests = data.map(session => ({
-        id: session.id.toString(),
-        mentee: {
-          name: session.mentee_name || 'Unknown Mentee',
-          email: session.mentee_email || 'email@example.com',
-          avatar: null,
-          experience: 'Not specified'
-        },
-        requestedDate: session.session_date,
-        requestedTime: session.session_time,
-        duration: session.duration_minutes || 60,
-        topic: session.topic || 'General mentoring session',
-        fee: session.fee_amount || 0,
-        status: session.status,
-        requestedAt: session.created_at,
-        confirmedAt: session.updated_at,
-        additionalNotes: session.notes || '',
-        hasVideoCall: !!session.meeting_url,
-        videoCall: session.meeting_url ? {
-          meetingUrl: session.meeting_url,
-          provider: session.meeting_provider || 'jitsi'
-        } : null
-      }));
-      
-      setBookingRequests(formattedRequests);
+        // Transform API data to match our component format
+        const formattedRequests = data.map(session => ({
+          id: session.id.toString(),
+          mentee: {
+            name: session.mentee_name || 'Unknown Mentee',
+            email: session.mentee_email || 'email@example.com',
+            avatar: null,
+            experience: 'Not specified'
+          },
+          requestedDate: formatSessionDateTime(session.session_date, session.session_time),
+          requestedTime: formatTime(session.session_time),
+          duration: session.duration_minutes || 60,
+          topic: session.topic || 'General mentoring session',
+          fee: session.fee_amount || 0,
+          status: session.status,
+          requestedAt: session.created_at,
+          confirmedAt: session.updated_at,
+          additionalNotes: session.notes || '',
+          hasVideoCall: !!session.meeting_url,
+          videoCall: session.meeting_url ? {
+            meetingUrl: session.meeting_url,
+            provider: session.meeting_provider || 'jitsi'
+          } : null
+        }));      setBookingRequests(formattedRequests);
     } catch (err) {
       console.error('Error fetching session requests:', err);
       setError(err.message);

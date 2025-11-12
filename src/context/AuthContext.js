@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ADMIN_CREDENTIALS } from '../config/adminCredentials';
 
 const AuthContext = createContext();
 
@@ -12,17 +14,54 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  // For demo purposes, we'll auto-login with test accounts based on role
-  const [user, setUser] = useState({ id: 2, email: 'mentee@example.com', name: 'Test Mentee' });
-  const [userType, setUserType] = useState('mentee'); // 'admin', 'mentor' or 'mentee'
+  const [user, setUser] = useState(null);
+  const [userType, setUserType] = useState(null); // 'admin', 'mentor' or 'mentee'
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Use the environment variable for API URL or fallback to localhost
+  // Load stored authentication state when the app starts
+  useEffect(() => {
+    const loadStoredAuth = async () => {
+      try {
+        const [storedUser, storedUserType] = await Promise.all([
+          AsyncStorage.getItem('userData'),
+          AsyncStorage.getItem('userType')
+        ]);
+        
+        if (storedUser && storedUserType) {
+          setUser(JSON.parse(storedUser));
+          setUserType(storedUserType);
+        }
+      } catch (error) {
+        console.error('Error loading stored auth:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadStoredAuth();
+  }, []);
+
+  // Use the environment variable for API URL
   const API_URL = Platform.select({
     web: 'http://localhost:3000',
     android: 'http://10.0.2.2:3000', // Android emulator localhost
     ios: 'http://localhost:3000',
-    default: 'http://localhost:3000',
+    default: process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000',
   });
+
+  // Test server connection on startup
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        const response = await fetch(`${API_URL}/health`);
+        const data = await response.json();
+        console.log('Server health check:', data);
+      } catch (error) {
+        console.error('Server connection test failed:', error);
+      }
+    };
+    testConnection();
+  }, []);
   
   // Log the API URL for debugging
   console.log('🔗 API URL:', API_URL);
@@ -39,6 +78,9 @@ export const AuthProvider = ({ children }) => {
       console.warn(`URL doesn't start with http:// or https://: ${url}`);
     }
     
+    console.log('Making API request to:', url);
+    console.log('Request options:', JSON.stringify(options, null, 2));
+    
     // Setup abort controller for timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -54,10 +96,11 @@ export const AuthProvider = ({ children }) => {
         ...options,
         signal: controller.signal,
         headers: {
-          ...options.headers,
           'Accept': 'application/json',
           'Content-Type': 'application/json',
+          ...options.headers,
         },
+        mode: 'cors'
       });
       
       // Clear timeout as request completed
@@ -77,9 +120,11 @@ export const AuthProvider = ({ children }) => {
       if (error.name === 'AbortError') {
         throw new Error(`Request timed out after ${timeout/1000} seconds. Please check your connection and try again.`);
       } else if (error.message && error.message.includes('Network request failed')) {
-        throw new Error(`Network request failed. Please check your internet connection and that the server is running at ${url.split('/').slice(0, 3).join('/')}`);
+        throw new Error(`Server connection failed. Please ensure the server is running at ${url.split('/').slice(0, 3).join('/')}`);
       } else if (error.message && error.message.includes('ECONNREFUSED')) {
-        throw new Error(`Connection refused. The server at ${url.split('/').slice(0, 3).join('/')} appears to be offline or unreachable.`);
+        throw new Error(`Connection refused. Please check if the server is running at ${url.split('/').slice(0, 3).join('/')}`);
+      } else if (error.message === 'Failed to fetch') {
+        throw new Error(`Failed to connect to server at ${url.split('/').slice(0, 3).join('/')}. Please ensure the server is running and CORS is properly configured.`);
       }
       
       throw error;
@@ -119,11 +164,38 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
+      // Input validation
+      if (!email || !password) {
+        throw new Error('Email and password are required');
+      }
+
+      if (!email.includes('@')) {
+        throw new Error('Invalid email format');
+      }
+
+      console.log('Attempting login with:', { email, apiUrl: API_URL });
+
       // Special handling for admin login
-      if (email.toLowerCase() === 'admin@example.com') {
-        setUser({ id: 'admin', email, name: 'Admin' });
+      if (email.toLowerCase() === ADMIN_CREDENTIALS.email) {
+        if (password !== ADMIN_CREDENTIALS.password) {
+          throw new Error('Invalid password');
+        }
+        
+        const adminData = {
+          id: 'admin',
+          email: ADMIN_CREDENTIALS.email,
+          name: 'Administrator',
+          role: 'admin'
+        };
+        
+        await Promise.all([
+          AsyncStorage.setItem('userData', JSON.stringify(adminData)),
+          AsyncStorage.setItem('userType', 'admin')
+        ]);
+        
+        setUser(adminData);
         setUserType('admin');
-        return true;
+        return { success: true, user: adminData };
       }
 
       const response = await fetchWithTimeout(
@@ -131,7 +203,7 @@ export const AuthProvider = ({ children }) => {
         {
           method: 'POST',
           body: JSON.stringify({
-            email,
+            email: email.toLowerCase(),
             password
           }),
         }
@@ -145,16 +217,45 @@ export const AuthProvider = ({ children }) => {
       }
       
       if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
+        // Handle specific error cases
+        switch (response.status) {
+          case 401:
+            throw new Error('Invalid email or password');
+          case 403:
+            throw new Error('Account is locked. Please contact support.');
+          case 404:
+            throw new Error('Account not found');
+          default:
+            throw new Error(data.error || 'Login failed');
+        }
       }
+
+      if (!data.id || !data.email || !data.role) {
+        throw new Error('Invalid response from server');
+      }
+
+      // Store authentication state
+      await Promise.all([
+        AsyncStorage.setItem('userData', JSON.stringify(data)),
+        AsyncStorage.setItem('userType', data.role)
+      ]);
 
       setUser(data);
       setUserType(data.role);
-      return true;
+      
+      // Return the user data for immediate use if needed
+      return { success: true, user: data };
     } catch (error) {
       console.error('Login error:', error);
       setUser(null);
       setUserType(null);
+      
+      // Clear stored auth state on error
+      await Promise.all([
+        AsyncStorage.removeItem('userData'),
+        AsyncStorage.removeItem('userType')
+      ]).catch(e => console.error('Error clearing auth storage:', e));
+      
       throw error;
     }
   };
@@ -163,33 +264,34 @@ export const AuthProvider = ({ children }) => {
     try {
       console.log('AuthContext: Logging out user');
       
-      // Clear all auth state
+      // Clear stored auth state
+      await Promise.all([
+        AsyncStorage.removeItem('userData'),
+        AsyncStorage.removeItem('userType')
+      ]);
+      
+      // Clear memory state
       setUser(null);
       setUserType(null);
-      
-      // Clear storage (when implemented)
-      // await AsyncStorage.removeItem('userToken');
-      // await AsyncStorage.removeItem('userType');
-      // await AsyncStorage.removeItem('userData');
       
       console.log('AuthContext: Logout completed successfully');
       return true;
     } catch (error) {
       console.error('AuthContext: Logout error:', error);
-      // Even if there's an error, clear the state
+      // Even if there's an error clearing storage, clear the memory state
       setUser(null);
       setUserType(null);
       return false;
     }
   };
 
-  const updateUser = (updatedUserData) => {
+  const updateUser = async (updatedUserData) => {
     try {
+      // Update memory state
       setUser(updatedUserData);
       
-      // In real app, would update user data in backend and storage
-      // await updateUserProfile(updatedUserData);
-      // await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
+      // Update stored state
+      await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
       
       return true;
     } catch (error) {

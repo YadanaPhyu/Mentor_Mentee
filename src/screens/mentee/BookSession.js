@@ -52,6 +52,42 @@ export default function BookSession({ route, navigation }) {
   const [sessionStatus, setSessionStatus] = useState('booking'); // 'booking', 'pending', 'confirmed', 'rejected'
   const [bookingRequest, setBookingRequest] = useState(null);
 
+  // Helper function to format time for display (HH:mm:ss to 12-hour format)
+  const formatTimeForDisplay = (time24) => {
+    if (!time24) return '';
+    const match = time24.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) return time24;
+    let h = parseInt(match[1], 10);
+    const m = match[2];
+    const suffix = h >= 12 ? 'PM' : 'AM';
+    h = ((h + 11) % 12) + 1;
+    return `${h}:${m} ${suffix}`;
+  };
+
+  // Helper function to format date for display (dd-MM-yyyy to readable format)
+  const formatDateForDisplay = (dateStr) => {
+    if (!dateStr) return '';
+    const match = dateStr.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if (!match) return dateStr;
+    const dd = match[1];
+    const mm = match[2];
+    const yyyy = match[3];
+    const date = new Date(yyyy, parseInt(mm) - 1, parseInt(dd));
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  // Helper function to combine date and time into SQL datetime format
+  const combineDateTimeForSQL = (dateStr, timeStr) => {
+    // dateStr is dd-MM-yyyy, timeStr is HH:mm:ss
+    // Return: yyyy-MM-dd HH:mm:ss
+    const dateMatch = dateStr.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if (!dateMatch) return null;
+    const dd = dateMatch[1];
+    const mm = dateMatch[2];
+    const yyyy = dateMatch[3];
+    return `${yyyy}-${mm}-${dd} ${timeStr}`;
+  };
+
   // Fetch mentor data from API
   useEffect(() => {
     const fetchMentorData = async () => {
@@ -131,11 +167,7 @@ export default function BookSession({ route, navigation }) {
   };
 
   // Use mentor's preferred meeting times if available, otherwise use defaults
-  const [availableSlots, setAvailableSlots] = useState({
-    'Jul 21': ['10:00 AM', '2:00 PM', '4:00 PM'],
-    'Jul 22': ['9:00 AM', '1:00 PM', '3:00 PM'],
-    'Jul 23': ['11:00 AM', '2:00 PM', '5:00 PM'],
-  });
+  const [availableSlots, setAvailableSlots] = useState({});
   
   // Update available slots when mentor data loads
   useEffect(() => {
@@ -144,6 +176,24 @@ export default function BookSession({ route, navigation }) {
       setAvailableSlots(mentor.meetingTimes);
     } else {
       console.log('Using default meeting time slots');
+      // Generate default slots in dd-MM-yyyy format
+      const defaultSlots = {};
+      const now = new Date();
+      const templates = [
+        ['10:00:00', '14:00:00', '16:00:00'],
+        ['09:00:00', '13:00:00', '15:00:00'],
+        ['11:00:00', '14:00:00', '17:00:00'],
+      ];
+      for (let i = 0; i < 3; i++) {
+        const d = new Date(now);
+        d.setDate(d.getDate() + i + 1);
+        const dd = d.getDate().toString().padStart(2, '0');
+        const mm = (d.getMonth() + 1).toString().padStart(2, '0');
+        const yyyy = d.getFullYear();
+        const label = `${dd}-${mm}-${yyyy}`;
+        defaultSlots[label] = templates[i];
+      }
+      setAvailableSlots(defaultSlots);
     }
   }, [mentor]);
 
@@ -218,13 +268,20 @@ export default function BookSession({ route, navigation }) {
     }
     
     // Create request data that exactly matches the server expectations
+    const sessionDateTime = combineDateTimeForSQL(selectedDate, selectedTime);
+    if (!sessionDateTime) {
+      Alert.alert('Error', 'Invalid date or time format. Please try again.');
+      setButtonClicked(false);
+      return;
+    }
+
     const sessionRequestData = {
       mentor_id: validMentorId,
       mentee_id: validMenteeId,
-      date: selectedDate,
-      time: selectedTime,
+      date: sessionDateTime.split(' ')[0], // yyyy-MM-dd
+      time: sessionDateTime.split(' ')[1], // HH:mm:ss
       duration: 60, // minutes
-      status: 'pending_approval',
+      status: 'pending_mentor_approval',
       topic: requestNote || 'General mentoring session',
       fee: mentor?.sessionFee || 0, // Server expects 'fee', not 'fee_amount'
     };
@@ -547,7 +604,7 @@ export default function BookSession({ route, navigation }) {
         requestedAt: new Date().toISOString(),
         hasVideoCall: false,
         emailNotificationSent: false,
-        status: 'pending_approval'
+        status: 'pending_mentor_approval'
       };
       
       console.log('Created session booking request:', newBookingRequest);
@@ -556,10 +613,7 @@ export default function BookSession({ route, navigation }) {
       setSessionStatus('pending');
       setButtonClicked(false);
 
-      // Send notification to mentor (not confirmation email yet)
-      sendMentorNotification(newBookingRequest);
-
-      console.log('✅ Session request sent to mentor for approval');
+  console.log('✅ Session request created; waiting for mentor approval');
 
     } catch (error) {
       console.error('❌ Error creating session request:', error);
@@ -568,105 +622,83 @@ export default function BookSession({ route, navigation }) {
     }
   };
 
-  // Function to send notification to mentor about the booking request
-  const sendMentorNotification = async (request) => {
-    console.log('📧 Sending booking request notification to mentor...');
-    
-    try {
-      // In real app, send notification to mentor via API
-      const mentorEmail = 'mentor@example.com'; // Replace with actual mentor email
-      
-      // For demo purposes, simulate mentor response after 3 seconds
-      setTimeout(() => {
-        simulateMentorResponse(request);
-      }, 3000);
-      
-      console.log('✅ Mentor notification sent');
-    } catch (error) {
-      console.error('❌ Error sending mentor notification:', error);
+  // Poll server for session status while pending
+  useEffect(() => {
+    let intervalId;
+    const shouldPoll = sessionStatus === 'pending' && bookingRequest?.id;
+    if (shouldPoll) {
+      const poll = async () => {
+        try {
+          const url = `${API_URL}/api/sessions/${bookingRequest.id}`;
+          console.log('🔄 Polling session status:', url);
+          const resp = await fetchWithTimeout(url);
+          if (!resp.ok) {
+            console.warn('Status poll non-OK:', resp.status);
+            return;
+          }
+          const s = await resp.json();
+          console.log('📥 Polled session:', s);
+          const status = (s.status || '').toLowerCase();
+          if (status === 'confirmed') {
+            processConfirmedSession();
+          } else if (status.includes('reject')) {
+            handleMentorRejection(bookingRequest);
+          }
+        } catch (e) {
+          console.warn('Status poll failed:', e.message);
+        }
+      };
+      // Immediate poll then every 5s
+      poll();
+      intervalId = setInterval(poll, 5000);
     }
-  };
-
-  // Function to simulate mentor confirmation (for demo purposes)
-  // In a real app, this would be replaced by a webhook or polling mechanism
-  // to check if the mentor has confirmed the session
-  const simulateMentorResponse = async (request) => {
-    console.log('🤖 Simulating mentor response...');
-    
-    try {
-      // In a real app, this would be a call to check session status
-      console.log(`Checking session status: ${API_URL}/api/sessions/${request.id}`);
-      const response = await fetchWithTimeout(`${API_URL}/api/sessions/${request.id}`);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to get session status: ${response.status}`);
-      }
-      
-      const sessionData = await response.json();
-      console.log('Session status check:', sessionData);
-      
-      // For demo purposes, simulate a positive response from the mentor
-      const mentorConfirmed = true; // In real app, this would be sessionData.status === 'confirmed'
-      
-      if (mentorConfirmed) {
-        handleMentorConfirmation(request);
-      } else {
-        handleMentorRejection(request);
-      }
-    } catch (error) {
-      console.error('Error checking session status:', error);
-      // For demo purposes, still proceed with confirmation
-      handleMentorConfirmation(request);
-    }
-  };
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [sessionStatus, bookingRequest?.id, API_URL, fetchWithTimeout]);
 
   // Function to handle mentor confirmation
-  const handleMentorConfirmation = async (request) => {
+  const processConfirmedSession = async () => {
     console.log('✅ Mentor confirmed the session!');
-    
     try {
-      // Update session status via API
-      console.log(`Updating session status: ${API_URL}/api/sessions/${request.id}/status`);
-      const response = await fetchWithTimeout(`${API_URL}/api/sessions/${request.id}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: 'confirmed' }),
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || `Failed to update session status: ${response.status}`);
-      }
-      
-      // Get updated session data
-      const updatedSession = await response.json();
-      console.log('📝 Updated session from API:', updatedSession);
-      
+      if (!bookingRequest?.id) return;
       // Update request to confirmed session with video call
       const confirmedSession = {
-        ...request,
+        ...bookingRequest,
         status: 'confirmed',
         confirmedAt: new Date().toISOString(),
-        hasVideoCall: true
+        hasVideoCall: true,
       };
-
-      // Generate video call link only after mentor confirmation
+      // Generate video call link
       const sessionWithVideoCall = VideoCallService.addMeetingToSession(confirmedSession);
       console.log('🎥 Video call generated after mentor confirmation:', sessionWithVideoCall.videoCall);
 
-      // Update states to show confirmed session
+      // Persist meeting link to server
+      try {
+        const { meetingUrl, provider } = sessionWithVideoCall.videoCall;
+        const putUrl = `${API_URL}/api/sessions/${bookingRequest.id}/meeting`;
+        const putResp = await fetchWithTimeout(putUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ meeting_url: meetingUrl, meeting_provider: provider || 'jitsi' }),
+        });
+        if (!putResp.ok) {
+          console.warn('Failed to persist meeting link:', await putResp.text());
+        }
+      } catch (persistErr) {
+        console.warn('Persist meeting link error:', persistErr.message);
+      }
+
+      // Update UI state
       setCreatedSession(sessionWithVideoCall);
       setSessionStatus('confirmed');
       setSessionCreated(true);
 
       // Send confirmation email with meeting link
       sendConfirmationEmail(sessionWithVideoCall);
-
     } catch (error) {
-      console.error('❌ Error confirming session:', error);
-      Alert.alert('Error', `Failed to confirm the session. ${error.message}`);
+      console.error('❌ Error handling confirmed session:', error);
+      Alert.alert('Error', `Failed to update confirmed session. ${error.message}`);
     }
   };
 
@@ -1073,7 +1105,7 @@ export default function BookSession({ route, navigation }) {
                   selectedDate === date && styles.selectedDateText,
                 ]}
               >
-                {date}
+                {formatDateForDisplay(date)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -1099,7 +1131,7 @@ export default function BookSession({ route, navigation }) {
                     selectedTime === time && styles.selectedTimeText,
                   ]}
                 >
-                  {time}
+                  {formatTimeForDisplay(time)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -1113,11 +1145,11 @@ export default function BookSession({ route, navigation }) {
           <View style={styles.detailsCard}>
             <View style={styles.detailRow}>
               <Ionicons name="calendar-outline" size={24} color="#667eea" />
-              <Text style={styles.detailText}>{selectedDate}</Text>
+              <Text style={styles.detailText}>{formatDateForDisplay(selectedDate)}</Text>
             </View>
             <View style={styles.detailRow}>
               <Ionicons name="time-outline" size={24} color="#667eea" />
-              <Text style={styles.detailText}>{selectedTime}</Text>
+              <Text style={styles.detailText}>{formatTimeForDisplay(selectedTime)}</Text>
             </View>
             <View style={styles.detailRow}>
               <Ionicons name="hourglass-outline" size={24} color="#667eea" />

@@ -27,6 +27,7 @@ export default function EditProfile() {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  const [saveToastVisible, setSaveToastVisible] = useState(false);
 
   // Initialize form state with user data
   const [name, setName] = useState('');
@@ -330,11 +331,12 @@ export default function EditProfile() {
         updateUser(updatedUserData);
       }
       
-      Alert.alert(
-        t('success'),
-        'Profile updated successfully!',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      // Show inline toast then navigate back shortly after
+      setSaveToastVisible(true);
+      setTimeout(() => {
+        setSaveToastVisible(false);
+        navigation.goBack();
+      }, 1200);
     } catch (error) {
       console.error('Error updating profile:', error);
       Alert.alert(
@@ -367,17 +369,12 @@ export default function EditProfile() {
         <View style={styles.headerContent}>
           <TouchableOpacity 
             style={styles.backButton}
-            onPress={handleCancel}
+            onPress={() => navigation.goBack()}
           >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Edit Profile</Text>
-          <TouchableOpacity 
-            style={styles.saveButton}
-            onPress={handleSave}
-          >
-            <Text style={styles.saveButtonText}>Save</Text>
-          </TouchableOpacity>
+          <View style={{ width: 60 }} />
         </View>
       </LinearGradient>
 
@@ -715,6 +712,12 @@ export default function EditProfile() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {saveToastVisible && (
+        <View style={styles.toastContainer}>
+          <Text style={styles.toastText}>Profile updated</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -756,6 +759,27 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: 'white',
     fontSize: 14,
+    fontWeight: '600',
+  },
+  toastContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(51, 171, 83, 0.95)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  toastText: {
+    color: 'white',
     fontWeight: '600',
   },
   content: {

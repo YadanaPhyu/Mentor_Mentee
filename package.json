@@ -6,7 +6,10 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "seed:test": "node scripts/seed-test-data.js",
+    "seed:availability": "node scripts/set-mentor-availability.js",
+    "normalize:meeting-times": "node scripts/normalize-preferred-meeting-times.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
@@ -28,6 +31,7 @@
     "expo-sqlite": "^15.2.14",
     "expo-status-bar": "~2.2.3",
     "express": "^5.1.0",
+    "morgan": "^1.10.1",
     "mssql": "^11.0.1",
     "openai": "^5.12.2",
     "react": "19.0.0",

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Connection Test</title>
+</head>
+<body>
+    <h1>API Connection Test</h1>
+    <button onclick="testHealth()">Test /health</button>
+    <button onclick="testLogin()">Test /login</button>
+    <pre id="output"></pre>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+        const output = document.getElementById('output');
+
+        async function testHealth() {
+            output.textContent = 'Testing /health endpoint...\n';
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                output.textContent += `✅ SUCCESS!\n`;
+                output.textContent += `Status: ${response.status}\n`;
+                output.textContent += `Data: ${JSON.stringify(data, null, 2)}\n`;
+            } catch (error) {
+                output.textContent += `❌ ERROR!\n`;
+                output.textContent += `${error.message}\n`;
+                output.textContent += `${error.stack}\n`;
+            }
+        }
+
+        async function testLogin() {
+            output.textContent = 'Testing /api/auth/login endpoint...\n';
+            try {
+                const response = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@example.com',
+                        password: 'admin123'
+                    })
+                });
+                const data = await response.json();
+                output.textContent += `✅ SUCCESS!\n`;
+                output.textContent += `Status: ${response.status}\n`;
+                output.textContent += `Data: ${JSON.stringify(data, null, 2)}\n`;
+            } catch (error) {
+                output.textContent += `❌ ERROR!\n`;
+                output.textContent += `${error.message}\n`;
+                output.textContent += `${error.stack}\n`;
+            }
+        }
+
+        // Auto-test on load
+        window.onload = () => {
+            testHealth();
+        };
+    </script>
+</body>
+</html>

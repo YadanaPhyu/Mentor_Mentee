@@ -41,12 +41,43 @@ export default function SessionDetails({ route, navigation }) {
         const sessionData = await response.json();
         console.log('Session details:', sessionData);
         
+        // Helper to format session date/time
+        const formatSessionDate = (dateStr, timeStr) => {
+          try {
+            const fullDateTime = timeStr ? `${dateStr} ${timeStr}` : dateStr;
+            const date = new Date(fullDateTime);
+            if (isNaN(date.getTime())) return dateStr;
+            return new Intl.DateTimeFormat('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric'
+            }).format(date);
+          } catch (e) {
+            return dateStr;
+          }
+        };
+
+        // Helper to format time (HH:mm:ss to 12-hour or pass through if already formatted)
+        const formatTimeDisplay = (timeStr) => {
+          if (!timeStr) return '';
+          // If already in 12-hour format (e.g., "12:00 PM"), return as-is
+          if (/AM|PM/i.test(timeStr)) return timeStr;
+          // Otherwise, convert from 24-hour format
+          const match = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+          if (!match) return timeStr;
+          let h = parseInt(match[1], 10);
+          const m = match[2];
+          const suffix = h >= 12 ? 'PM' : 'AM';
+          h = ((h + 11) % 12) + 1;
+          return `${h}:${m} ${suffix}`;
+        };
+        
         // Format the session data for UI
         const formattedSession = {
           id: sessionData.id,
           status: sessionData.status,
-          date: new Date(sessionData.session_date).toLocaleDateString(),
-          time: sessionData.session_time,
+          date: formatSessionDate(sessionData.session_date, sessionData.session_time),
+          time: formatTimeDisplay(sessionData.session_time),
           duration: sessionData.duration_minutes || 60,
           topic: sessionData.topic || 'General mentoring session',
           fee: sessionData.fee_amount || 0,
@@ -85,6 +116,7 @@ export default function SessionDetails({ route, navigation }) {
   const formatDate = (dateString) => {
     if (!dateString) return 'Not available';
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'short',

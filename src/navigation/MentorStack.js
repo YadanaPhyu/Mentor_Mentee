@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import MentorHomeScreen from '../screens/mentor/MentorHomeScreen';
+import MentorHomeStack from './MentorHomeStack';
 import MessagesScreen from '../screens/MessagesScreen';
 import ProfileStack from './ProfileStack';
 import { useLanguage } from '../context/LanguageContext';
@@ -59,10 +59,11 @@ export default function MentorStack() {
     >
       <Tab.Screen
         name="Dashboard"
-        component={MentorHomeScreen}
+        component={MentorHomeStack}
         options={{ 
           title: t('mentorDashboard'),
-          tabBarLabel: t('dashboard')
+          tabBarLabel: t('dashboard'),
+          headerShown: false // Let the stack handle headers
         }}
       />
       <Tab.Screen

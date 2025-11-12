@@ -29,7 +29,7 @@ export default function SessionRequests({ navigation }) {
   const [error, setError] = useState(null);
   
   // Filter sessions by status
-  const pendingRequests = sessions.filter(s => s.status === 'pending_approval');
+  const pendingRequests = sessions.filter(s => s.status === 'pending_mentor_approval' || s.status === 'pending_approval');
   const approvedSessions = sessions.filter(s => s.status === 'approved');
   const rejectedSessions = sessions.filter(s => s.status === 'rejected');
 
@@ -37,12 +37,56 @@ export default function SessionRequests({ navigation }) {
   const formatDate = (dateString) => {
     if (!dateString) return 'Unknown';
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString; // Return as-is if invalid
     return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit'
     }).format(date);
+  };
+
+  // Format session date and time from database format
+  const formatSessionDateTime = (dateStr, timeStr) => {
+    if (!dateStr) return 'Unknown';
+    
+    // dateStr might be in yyyy-MM-dd format from database
+    // timeStr might be HH:mm:ss format
+    try {
+      let fullDateTime;
+      if (timeStr) {
+        fullDateTime = `${dateStr} ${timeStr}`;
+      } else {
+        fullDateTime = dateStr;
+      }
+      const date = new Date(fullDateTime);
+      if (isNaN(date.getTime())) {
+        return `${dateStr} ${timeStr || ''}`;
+      }
+      return new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      }).format(date);
+    } catch (e) {
+      return `${dateStr} ${timeStr || ''}`;
+    }
+  };
+
+  // Format time for display (HH:mm:ss to 12-hour or pass through if already formatted)
+  const formatTime = (timeStr) => {
+    if (!timeStr) return '';
+    // If already in 12-hour format (e.g., "12:00 PM"), return as-is
+    if (/AM|PM/i.test(timeStr)) return timeStr;
+    // Otherwise, convert from 24-hour format
+    const match = timeStr.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+    if (!match) return timeStr;
+    let h = parseInt(match[1], 10);
+    const m = match[2];
+    const suffix = h >= 12 ? 'PM' : 'AM';
+    h = ((h + 11) % 12) + 1;
+    return `${h}:${m} ${suffix}`;
   };
   
   // Fetch session data from API
@@ -80,8 +124,8 @@ export default function SessionRequests({ navigation }) {
           title: session.mentee_title || '',
           email: session.mentee_email || 'email@example.com',
         },
-        requestedDate: new Date(session.session_date).toLocaleDateString(),
-        requestedTime: session.session_time,
+        requestedDate: formatSessionDateTime(session.session_date, session.session_time),
+        requestedTime: formatTime(session.session_time),
         duration: session.duration_minutes || 60,
         topic: session.topic || 'General mentoring session',
         fee: session.fee_amount || 0, // Changed from session_fee to fee_amount
@@ -490,7 +534,7 @@ export default function SessionRequests({ navigation }) {
                 )}
 
                 <View style={styles.modalActions}>
-                  {selectedRequest.status === 'pending_approval' && (
+                  {(selectedRequest.status === 'pending_approval' || selectedRequest.status === 'pending_mentor_approval') && (
                     <>
                       <TouchableOpacity
                         style={[styles.modalButton, styles.acceptButton]}

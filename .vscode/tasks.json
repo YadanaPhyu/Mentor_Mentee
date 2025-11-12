@@ -8,6 +8,31 @@
 			"group": "build",
 			"isBackground": true,
 			"problemMatcher": []
+		},
+		{
+			"label": "Start API Server",
+			"type": "shell",
+			"command": "node server-minimal.js",
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": {
+				"pattern": {
+					"regexp": "^Server is running"
+				},
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": "^Attempting to connect",
+					"endsPattern": "^Server is running"
+				}
+			}
+		},
+		{
+			"label": "Start All Servers",
+			"dependsOn": [
+				"Start API Server",
+				"Start Expo Development Server"
+			],
+			"problemMatcher": []
 		}
 	]
 }

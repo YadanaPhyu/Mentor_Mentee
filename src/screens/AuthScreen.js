@@ -21,8 +21,28 @@ export default function AuthScreen() {
   const [name, setName] = useState('');
   const [userType, setUserType] = useState('mentee');
   const [loading, setLoading] = useState(false);
-  const { login, signup } = useAuth();
+  const { login, signup, API_URL, fetchWithTimeout } = useAuth();
+  const [serverOnline, setServerOnline] = useState(true);
   const { t, toggleLanguage, language } = useLanguage();
+
+  // Check API health on mount
+  React.useEffect(() => {
+    let cancelled = false;
+    const ping = async () => {
+      try {
+        // Fast health check with short timeout
+        await fetchWithTimeout(`${API_URL}/health`, { method: 'GET' }, 3000);
+        if (!cancelled) setServerOnline(true);
+      } catch (e) {
+        if (!cancelled) setServerOnline(false);
+        console.warn('API health check failed:', e?.message);
+      }
+    };
+    ping();
+    // Optional periodic check while on auth screen
+    const id = setInterval(ping, 20000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [API_URL, fetchWithTimeout]);
 
   const handleSubmit = async () => {
     try {
@@ -32,6 +52,21 @@ export default function AuthScreen() {
       }
 
       setLoading(true);
+      
+      // Preflight: ensure API is reachable, provide clear guidance if not
+      try {
+        await fetchWithTimeout(`${API_URL}/health`, { method: 'GET' }, 4000);
+      } catch (e) {
+        setServerOnline(false);
+        Alert.alert(
+          'Cannot reach server',
+          `The API at ${API_URL} is not reachable. Please:
+\n1) Start the API server (node server-minimal.js or VS Code task).
+2) Keep this window open while the server runs.
+3) Then try again.\n\nTechnical: ${e?.message || 'Unknown network error'}`
+        );
+        return;
+      }
       
       if (isLogin) {
         await login(email, password);
@@ -53,6 +88,25 @@ export default function AuthScreen() {
         style={styles.gradient}
       >
         <View style={styles.content}>
+          {/* Server status banner */}
+          {!serverOnline && (
+            <View style={styles.serverBanner}>
+              <Ionicons name="cloud-offline" size={18} color="#fff" />
+              <Text style={styles.serverBannerText}>
+                Cannot reach API at {API_URL}. Start the server and retry.
+              </Text>
+              <TouchableOpacity onPress={async () => {
+                try {
+                  await fetchWithTimeout(`${API_URL}/health`, { method: 'GET' }, 3000);
+                  setServerOnline(true);
+                } catch {
+                  setServerOnline(false);
+                }
+              }}>
+                <Text style={styles.serverBannerLink}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          )}
           <View style={styles.languageToggle}>
             <TouchableOpacity onPress={toggleLanguage} style={styles.languageButton}>
               <Ionicons name="language" size={20} color="white" />
@@ -177,6 +231,26 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 30,
+  },
+  serverBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e53935',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  serverBannerText: {
+    color: '#fff',
+    marginLeft: 8,
+    flex: 1,
+  },
+  serverBannerLink: {
+    color: '#fff',
+    fontWeight: '600',
+    marginLeft: 12,
+    textDecorationLine: 'underline',
   },
   languageToggle: {
     position: 'absolute',

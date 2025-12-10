@@ -5,6 +5,8 @@ import MentorProfile from '../screens/mentee/MentorProfile';
 import BookSession from '../screens/mentee/BookSession';
 import MentorshipProgress from '../screens/mentee/MentorshipProgress';
 import SessionHistory from '../screens/mentee/SessionHistory';
+import UpcomingSessions from '../screens/mentee/UpcomingSessions';
+import SessionDetails from '../screens/mentee/SessionDetails';
 import EditProfile from '../screens/EditProfile';
 // Career Map imports
 import CareerGoalIntake from '../screens/CareerGoalIntake';
@@ -64,6 +66,16 @@ export default function MenteeStack() {
         options={{ title: 'Session History' }}
       />
       <Stack.Screen
+        name="UpcomingSessions"
+        component={UpcomingSessions}
+        options={{ title: 'Upcoming Sessions' }}
+      />
+      <Stack.Screen
+        name="MenteeSessionDetails"
+        component={SessionDetails}
+        options={{ title: 'Session Details' }}
+      />
+      <Stack.Screen
         name="EditProfile"
         component={EditProfile}
         options={{ 
@@ -75,27 +87,47 @@ export default function MenteeStack() {
       <Stack.Screen
         name="CareerGoalIntake"
         component={SimpleCareerGoalIntake}
-        options={{ title: 'Career Assessment' }}
+        options={{ 
+          title: 'Career Assessment',
+          headerShown: true,
+          headerBackTitleVisible: false,
+        }}
       />
       <Stack.Screen
         name="RoleConfirmation"
         component={RoleConfirmationScreen}
-        options={{ title: 'Confirm Career Role' }}
+        options={{ 
+          title: 'Confirm Career Role',
+          headerShown: true,
+          headerBackTitleVisible: false,
+        }}
       />
       <Stack.Screen
         name="CareerMapView"
         component={SimpleCareerMapView}
-        options={{ title: 'Your Career Map' }}
+        options={{ 
+          title: 'Your Career Map',
+          headerShown: true,
+          headerBackTitleVisible: false,
+        }}
       />
       <Stack.Screen
         name="ProgressTracker"
         component={ProgressTracker}
-        options={{ title: 'Progress Tracker' }}
+        options={{ 
+          title: 'Progress Tracker',
+          headerShown: true,
+          headerBackTitleVisible: false,
+        }}
       />
       <Stack.Screen
         name="MentorReview"
         component={MentorReview}
-        options={{ title: 'Mentor Review' }}
+        options={{ 
+          title: 'Mentor Review',
+          headerShown: true,
+          headerBackTitleVisible: false,
+        }}
       />
     </Stack.Navigator>
   );

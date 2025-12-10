@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,15 +16,44 @@ import { useLanguage } from '../context/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
 
 export default function HomeScreen() {
-  const { user, userType } = useAuth();
+  const { user, userType, API_URL, fetchWithTimeout } = useAuth();
   const { t } = useLanguage();
   const navigation = useNavigation();
+  
+  const [stats, setStats] = useState([
+    { label: t('connections'), value: '0', icon: 'people', loading: true },
+    { label: t('sessions'), value: '0', icon: 'time', loading: true },
+  ]);
 
-  const stats = [
-    { label: t('connections'), value: '12', icon: 'people' },
-    { label: t('messages'), value: '8', icon: 'chatbubbles' },
-    { label: t('sessions'), value: '24', icon: 'time' },
-  ];
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const response = await fetchWithTimeout(`${API_URL}/api/users/${user.id}/stats`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch stats');
+        }
+        
+        const data = await response.json();
+        
+        setStats([
+          { label: t('connections'), value: data.connections.toString(), icon: 'people', loading: false },
+          { label: t('sessions'), value: data.sessions.toString(), icon: 'time', loading: false },
+        ]);
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+        // Keep default values on error
+        setStats([
+          { label: t('connections'), value: '0', icon: 'people', loading: false },
+          { label: t('sessions'), value: '0', icon: 'time', loading: false },
+        ]);
+      }
+    };
+    
+    fetchStats();
+  }, [user?.id, API_URL, fetchWithTimeout, t]);
 
   const recentActivities = [
     { id: 1, text: 'New message from John Doe', time: '2 min ago' },
@@ -54,27 +84,31 @@ export default function HomeScreen() {
             {stats.map((stat, index) => (
               <View key={index} style={styles.statCard}>
                 <Ionicons name={stat.icon} size={30} color="#667eea" />
-                <Text style={styles.statValue}>{stat.value}</Text>
+                {stat.loading ? (
+                  <ActivityIndicator size="small" color="#667eea" style={styles.statValue} />
+                ) : (
+                  <Text style={styles.statValue}>{stat.value}</Text>
+                )}
                 <Text style={styles.statLabel}>{stat.label}</Text>
               </View>
             ))}
           </View>
         </View>
 
-        {/* Career Map Section for Mentees */}
+        {/* AI Career Development Section for Mentees */}
         {userType === 'mentee' && (
           <View style={styles.careerMapContainer}>
-            <Text style={styles.sectionTitle}>Career Development</Text>
+            <Text style={styles.sectionTitle}>🤖 AI Career Development</Text>
             <TouchableOpacity 
               style={styles.careerMapCard}
               onPress={() => navigation.navigate('CareerGoalIntake')}
             >
               <View style={styles.careerMapHeader}>
-                <Ionicons name="map" size={32} color="#667eea" />
+                <Ionicons name="cpu" size={32} color="#667eea" />
                 <View style={styles.careerMapContent}>
-                  <Text style={styles.careerMapTitle}>Build Your Career Roadmap</Text>
+                  <Text style={styles.careerMapTitle}>AI-Powered Career Roadmap</Text>
                   <Text style={styles.careerMapSubtitle}>
-                    Get a personalized 8-week learning plan tailored to your goals
+                    Get a personalized 8-week learning plan for ANY career path using AI!
                   </Text>
                 </View>
               </View>
@@ -82,38 +116,41 @@ export default function HomeScreen() {
               <View style={styles.careerMapFeatures}>
                 <View style={styles.feature}>
                   <Ionicons name="analytics" size={16} color="#667eea" />
-                  <Text style={styles.featureText}>Skill Gap Analysis</Text>
+                  <Text style={styles.featureText}>🎯 Skill gap analysis</Text>
                 </View>
                 <View style={styles.feature}>
                   <Ionicons name="calendar" size={16} color="#667eea" />
-                  <Text style={styles.featureText}>Weekly Goals</Text>
+                  <Text style={styles.featureText}>📚 Personalized resources</Text>
                 </View>
                 <View style={styles.feature}>
-                  <Ionicons name="trophy" size={16} color="#667eea" />
-                  <Text style={styles.featureText}>Portfolio Project</Text>
+                  <Ionicons name="rocket" size={16} color="#667eea" />
+                  <Text style={styles.featureText}>🚀 Weekly action plans</Text>
                 </View>
               </View>
               
               <View style={styles.careerMapAction}>
-                <Text style={styles.careerMapActionText}>Start Assessment</Text>
+                <Text style={styles.careerMapActionText}>Start AI Assessment</Text>
                 <Ionicons name="arrow-forward" size={20} color="#667eea" />
               </View>
             </TouchableOpacity>
           </View>
         )}
 
-        <View style={styles.activityContainer}>
-          <Text style={styles.sectionTitle}>{t('recentActivity')}</Text>
-          {recentActivities.map((activity) => (
-            <View key={activity.id} style={styles.activityItem}>
-              <View style={styles.activityDot} />
-              <View style={styles.activityContent}>
-                <Text style={styles.activityText}>{activity.text}</Text>
-                <Text style={styles.activityTime}>{activity.time}</Text>
+        {/* Recent Activity - Hidden for mentees */}
+        {userType === 'mentor' && (
+          <View style={styles.activityContainer}>
+            <Text style={styles.sectionTitle}>{t('recentActivity')}</Text>
+            {recentActivities.map((activity) => (
+              <View key={activity.id} style={styles.activityItem}>
+                <View style={styles.activityDot} />
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityText}>{activity.text}</Text>
+                  <Text style={styles.activityTime}>{activity.time}</Text>
+                </View>
               </View>
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
 
         <View style={styles.quickActionsContainer}>
           <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
@@ -134,21 +171,23 @@ export default function HomeScreen() {
                 {userType === 'mentor' ? t('findMentees') : t('findMentors')}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.quickActionButton}
-              onPress={() => navigation.navigate('Messages')}
-            >
-              <Ionicons name="chatbubbles" size={24} color="white" />
-              <Text style={styles.quickActionText}>{t('messages')}</Text>
-            </TouchableOpacity>
             {userType === 'mentee' && (
-              <TouchableOpacity 
-                style={styles.quickActionButton}
-                onPress={() => navigation.navigate('CareerGoalIntake')}
-              >
-                <Ionicons name="map" size={24} color="white" />
-                <Text style={styles.quickActionText}>Career Plan</Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity 
+                  style={styles.quickActionButton}
+                  onPress={() => navigation.navigate('UpcomingSessions')}
+                >
+                  <Ionicons name="calendar" size={24} color="white" />
+                  <Text style={styles.quickActionText}>My Sessions</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.quickActionButton}
+                  onPress={() => navigation.navigate('CareerGoalIntake')}
+                >
+                  <Ionicons name="map" size={24} color="white" />
+                  <Text style={styles.quickActionText}>Career Plan</Text>
+                </TouchableOpacity>
+              </>
             )}
           </View>
         </View>

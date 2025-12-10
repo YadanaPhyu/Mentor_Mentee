@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, Platform } from 'react-native';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { LanguageProvider } from './src/context/LanguageContext';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -12,7 +12,10 @@ function NavigationContent() {
   const { user, userType } = useAuth();
 
   useEffect(() => {
-    initDatabase();
+    // Only initialize SQLite on native platforms (not web)
+    if (Platform.OS !== 'web') {
+      initDatabase();
+    }
   }, []);
 
   return (

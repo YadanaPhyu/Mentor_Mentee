@@ -69,24 +69,27 @@ export default function MentorProfile({ route, navigation }) {
             linkedin: data.linkedin_url,
             github: data.github_url,
           },
-          // For now, we'll use mock reviews until we implement a reviews system
-          reviews: [
-            {
-              id: 1,
-              mentee: 'Alice Brown',
-              rating: 5,
-              comment: 'Excellent mentor, very patient and knowledgeable.',
-              date: '2 weeks ago',
-            },
-            {
-              id: 2,
-              mentee: 'Bob Wilson',
-              rating: 4,
-              comment: 'Great at explaining complex concepts in simple terms.',
-              date: '1 month ago',
-            },
-          ],
         });
+        
+        // Fetch real reviews for this mentor
+        try {
+          const reviewsResponse = await fetchWithTimeout(`${API_URL}/api/mentors/${mentorId}/reviews`);
+          if (reviewsResponse.ok) {
+            const reviewsData = await reviewsResponse.json();
+            const formattedReviews = reviewsData.map(review => ({
+              id: review.id,
+              mentee: review.mentee_name || 'Anonymous',
+              rating: review.rating,
+              comment: review.comment || '',
+              date: formatReviewDate(review.created_at),
+            }));
+            setMentor(prev => ({ ...prev, reviews: formattedReviews }));
+          }
+        } catch (reviewErr) {
+          console.warn('Could not fetch reviews:', reviewErr);
+          // If reviews fail, just set empty array
+          setMentor(prev => ({ ...prev, reviews: [] }));
+        }
       } catch (err) {
         console.error('Error fetching mentor profile:', err);
         setError(err.message);
@@ -116,6 +119,28 @@ export default function MentorProfile({ route, navigation }) {
     
     fetchMentorProfile();
   }, [mentorId, API_URL, fetchWithTimeout]);
+  
+  // Format review date to relative time
+  const formatReviewDate = (dateString) => {
+    if (!dateString) return 'Recently';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Recently';
+    
+    const now = new Date();
+    const diffMs = now - date;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffWeeks = Math.floor(diffDays / 7);
+    const diffMonths = Math.floor(diffDays / 30);
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffWeeks === 1) return '1 week ago';
+    if (diffWeeks < 4) return `${diffWeeks} weeks ago`;
+    if (diffMonths === 1) return '1 month ago';
+    if (diffMonths < 12) return `${diffMonths} months ago`;
+    return 'Over a year ago';
+  };
 
   // Show loading state
   if (loading) {

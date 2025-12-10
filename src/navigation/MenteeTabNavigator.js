@@ -4,8 +4,7 @@ import { TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
-import HomeScreen from '../screens/HomeScreen';
-import MessagesScreen from '../screens/MessagesScreen';
+import HomeStack from './HomeStack';
 import ProfileStack from './ProfileStack';
 import MenteeStack from './MenteeStack';
 
@@ -25,8 +24,6 @@ export default function MenteeTabNavigator() {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Discover') {
             iconName = focused ? 'search' : 'search-outline';
-          } else if (route.name === 'Messages') {
-            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           }
@@ -62,8 +59,9 @@ export default function MenteeTabNavigator() {
     >
       <Tab.Screen 
         name="Home" 
-        component={HomeScreen}
+        component={HomeStack}
         options={{ 
+          headerShown: false, // HomeStack will handle headers
           title: t('home'),
           tabBarLabel: t('home')
         }}
@@ -75,14 +73,6 @@ export default function MenteeTabNavigator() {
           headerShown: false,
           title: t('discover'),
           tabBarLabel: t('discover')
-        }}
-      />
-      <Tab.Screen 
-        name="Messages" 
-        component={MessagesScreen}
-        options={{ 
-          title: t('messages'),
-          tabBarLabel: t('messages')
         }}
       />
       <Tab.Screen

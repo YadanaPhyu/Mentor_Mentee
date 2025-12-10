@@ -622,6 +622,136 @@ app.get('/api/sessions/:sessionId', async (req, res) => {
     }
 });
 
+// Get user stats (connections and sessions count)
+app.get('/api/users/:userId/stats', async (req, res) => {
+    const { userId } = req.params;
+    
+    try {
+        // Get user role first
+        const userResult = await sql.query`
+            SELECT role FROM Users WHERE id = ${userId}
+        `;
+        
+        if (userResult.recordset.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        const userRole = userResult.recordset[0].role;
+        
+        let stats = {
+            connections: 0,
+            sessions: 0
+        };
+        
+        if (userRole === 'mentee') {
+            // For mentees: count unique mentors they've had sessions with
+            const connectionsResult = await sql.query`
+                SELECT COUNT(DISTINCT mentor_id) as count
+                FROM Sessions
+                WHERE mentee_id = ${userId}
+                AND status IN ('approved', 'completed')
+            `;
+            
+            // Count total sessions (approved and completed)
+            const sessionsResult = await sql.query`
+                SELECT COUNT(*) as count
+                FROM Sessions
+                WHERE mentee_id = ${userId}
+                AND status IN ('approved', 'completed')
+            `;
+            
+            stats.connections = connectionsResult.recordset[0].count || 0;
+            stats.sessions = sessionsResult.recordset[0].count || 0;
+        } else if (userRole === 'mentor') {
+            // For mentors: count unique mentees they've had sessions with
+            const connectionsResult = await sql.query`
+                SELECT COUNT(DISTINCT mentee_id) as count
+                FROM Sessions
+                WHERE mentor_id = ${userId}
+                AND status IN ('approved', 'completed')
+            `;
+            
+            // Count total sessions (approved and completed)
+            const sessionsResult = await sql.query`
+                SELECT COUNT(*) as count
+                FROM Sessions
+                WHERE mentor_id = ${userId}
+                AND status IN ('approved', 'completed')
+            `;
+            
+            stats.connections = connectionsResult.recordset[0].count || 0;
+            stats.sessions = sessionsResult.recordset[0].count || 0;
+        }
+        
+        res.json(stats);
+    } catch (err) {
+        console.error('Error fetching user stats:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Create a review for a session
+app.post('/api/sessions/:sessionId/review', async (req, res) => {
+    const { sessionId } = req.params;
+    const { menteeId, mentorId, rating, comment } = req.body;
+    if (!menteeId || !mentorId || !rating) {
+        return res.status(400).json({ error: 'menteeId, mentorId, and rating are required' });
+    }
+    try {
+        // Check if review already exists for this session and mentee
+        const existing = await sql.query`
+            SELECT id FROM reviews WHERE session_id = ${sessionId} AND mentee_id = ${menteeId}
+        `;
+        if (existing.recordset.length > 0) {
+            return res.status(409).json({ error: 'Review already submitted for this session' });
+        }
+        // Insert review
+        await sql.query`
+            INSERT INTO reviews (session_id, mentor_id, mentee_id, rating, comment, created_at)
+            VALUES (${sessionId}, ${mentorId}, ${menteeId}, ${rating}, ${comment}, GETDATE())
+        `;
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error creating review:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get reviews for a mentor
+app.get('/api/mentors/:mentorId/reviews', async (req, res) => {
+    const { mentorId } = req.params;
+    try {
+        const result = await sql.query`
+            SELECT r.id, r.rating, r.comment, r.created_at, m.full_name as mentee_name
+            FROM reviews r
+            LEFT JOIN Profiles m ON r.mentee_id = m.user_id
+            WHERE r.mentor_id = ${mentorId}
+            ORDER BY r.created_at DESC
+        `;
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('Error fetching mentor reviews:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get review for a session by mentee
+app.get('/api/sessions/:sessionId/review', async (req, res) => {
+    const { sessionId } = req.params;
+    const { menteeId } = req.query;
+    if (!menteeId) return res.status(400).json({ error: 'menteeId required' });
+    try {
+        const result = await sql.query`
+            SELECT * FROM reviews WHERE session_id = ${sessionId} AND mentee_id = ${menteeId}
+        `;
+        if (result.recordset.length === 0) return res.status(404).json({ error: 'Review not found' });
+        res.json(result.recordset[0]);
+    } catch (err) {
+        console.error('Error fetching review:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Connect to database and start server
 connectDB().then(() => {
     console.log('Database connection established');

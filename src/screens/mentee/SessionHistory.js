@@ -107,13 +107,6 @@ export default function SessionHistory({ navigation }) {
           
           <View style={styles.buttonRow}>
             <TouchableOpacity
-              style={[styles.actionButton, styles.messageButton]}
-              onPress={() => navigation.navigate('Messages')}
-            >
-              <Ionicons name="chatbubbles-outline" size={20} color="white" />
-              <Text style={styles.actionButtonText}>{t('message')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
               style={[styles.actionButton, styles.cancelButton]}
               onPress={() => {
                 // Handle cancellation

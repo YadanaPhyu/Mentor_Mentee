@@ -102,14 +102,6 @@ export default function MentorshipProgress({ route, navigation }) {
         
         <View style={styles.actionRow}>
           <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => navigation.navigate('Messages')}
-          >
-            <Ionicons name="chatbubbles-outline" size={24} color="white" />
-            <Text style={styles.buttonText}>{t('messageNow')}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
             style={[styles.actionButton, styles.cancelButton]}
             onPress={() => {
               // Handle session cancellation

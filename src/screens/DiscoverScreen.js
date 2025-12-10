@@ -299,31 +299,6 @@ export default function DiscoverScreen({ navigation }) {
           />
         }
       >
-        {/* AI Career Development Section */}
-        <View style={styles.careerSection}>
-          <Text style={styles.sectionTitle}>🤖 AI Career Development</Text>
-          <TouchableOpacity 
-            style={styles.careerCard}
-            onPress={() => navigation.navigate('CareerGoalIntake')}
-          >
-            <View style={styles.careerHeader}>
-              <Ionicons name="cpu" size={28} color="#667eea" />
-              <View style={styles.careerContent}>
-                <Text style={styles.careerTitle}>AI-Powered Career Roadmap</Text>
-                <Text style={styles.careerSubtitle}>
-                  Get a personalized 8-week learning plan for ANY career path using AI!
-                </Text>
-                <View style={styles.aiFeatures}>
-                  <Text style={styles.aiFeature}>🎯 Skill gap analysis</Text>
-                  <Text style={styles.aiFeature}>📚 Personalized resources</Text>
-                  <Text style={styles.aiFeature}>🚀 Weekly action plans</Text>
-                </View>
-              </View>
-              <Ionicons name="arrow-forward" size={20} color="#667eea" />
-            </View>
-          </TouchableOpacity>
-        </View>
-
         {/* Loading state */}
         {loading && !refreshing && (
           <View style={styles.loadingContainer}>

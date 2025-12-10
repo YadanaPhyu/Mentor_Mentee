@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import MentorHomeStack from './MentorHomeStack';
-import MessagesScreen from '../screens/MessagesScreen';
 import ProfileStack from './ProfileStack';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -22,8 +21,6 @@ export default function MentorStack() {
 
           if (route.name === 'Dashboard') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Messages') {
-            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           }
@@ -64,14 +61,6 @@ export default function MentorStack() {
           title: t('mentorDashboard'),
           tabBarLabel: t('dashboard'),
           headerShown: false // Let the stack handle headers
-        }}
-      />
-      <Tab.Screen
-        name="Messages"
-        component={MessagesScreen}
-        options={{ 
-          title: t('messages'),
-          tabBarLabel: t('messages')
         }}
       />
       <Tab.Screen

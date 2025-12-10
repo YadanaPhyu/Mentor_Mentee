@@ -1,0 +1,6 @@
+{
+  "watch": ["server-minimal.js", "src/database/**", "src/routes/**"],
+  "ignore": ["node_modules/**", ".git/**", ".expo/**", "src/screens/**", "src/components/**", "src/navigation/**"],
+  "ext": "js,json",
+  "delay": "1000"
+}

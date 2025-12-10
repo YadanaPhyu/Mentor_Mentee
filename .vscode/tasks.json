@@ -12,7 +12,7 @@
 		{
 			"label": "Start API Server",
 			"type": "shell",
-			"command": "node server-minimal.js",
+			"command": "npx nodemon server-minimal.js",
 			"group": "build",
 			"isBackground": true,
 			"problemMatcher": {

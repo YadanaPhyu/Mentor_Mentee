@@ -132,6 +132,7 @@ export default function SessionDetails({ route, navigation }) {
       case 'approved': return '#4caf50';
       case 'rejected': return '#f44336';
       case 'completed': return '#2196f3';
+      case 'completed-pending': return '#ff6f00';
       case 'cancelled': return '#9e9e9e';
       default: return '#9e9e9e';
     }
@@ -143,6 +144,7 @@ export default function SessionDetails({ route, navigation }) {
       case 'approved': return 'Approved';
       case 'rejected': return 'Rejected';
       case 'completed': return 'Completed';
+      case 'completed-pending': return 'Completion Pending';
       case 'cancelled': return 'Cancelled';
       default: return 'Unknown';
     }
@@ -236,48 +238,98 @@ export default function SessionDetails({ route, navigation }) {
     );
   };
   
-  const handleCompleteSession = () => {
-    Alert.alert(
-      'Mark Session as Complete',
-      'Are you sure you want to mark this session as complete?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Complete',
-          onPress: async () => {
-            try {
-              const response = await fetchWithTimeout(`${API_URL}/api/sessions/${sessionId}/status`, {
-                method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                  status: 'completed',
-                  userId: user?.id,
-                  userRole: user?.role
-                }),
-              });
-              
-              if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || `Failed to complete session: ${response.status}`);
-              }
-              
-              const updatedSession = await response.json();
-              setSession(prevSession => ({ 
-                ...prevSession, 
-                status: 'completed' 
-              }));
-              
-              Alert.alert('Session Completed', 'The session has been marked as completed.');
-            } catch (error) {
-              console.error('Error completing session:', error);
-              Alert.alert('Error', 'Failed to complete session. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+  const handleCompleteSession = async () => {
+    console.log('handleCompleteSession called for session:', sessionId);
+    console.log('User info:', { id: user?.id, role: user?.role });
+    console.log('Current session status:', session?.status);
+    
+    // If session is already pending completion by the other party, this is the final confirmation
+    if (session?.status === 'completed-pending') {
+      const confirmed = window.confirm('The other party has marked this session as complete. Do you confirm this session is completed?');
+      console.log('Final confirmation:', confirmed);
+      
+      if (confirmed) {
+        try {
+          console.log('Sending final completion request to:', `${API_URL}/api/sessions/${sessionId}/status`);
+          
+          const response = await fetchWithTimeout(`${API_URL}/api/sessions/${sessionId}/status`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              status: 'completed',
+              userId: user?.id,
+              userRole: user?.role
+            }),
+          });
+          
+          console.log('Response status:', response.status);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error response:', errorText);
+            throw new Error(errorText || `Failed to complete session: ${response.status}`);
+          }
+          
+          const updatedSession = await response.json();
+          console.log('Session completed successfully:', updatedSession);
+          
+          setSession(prevSession => ({ 
+            ...prevSession, 
+            status: 'completed' 
+          }));
+          
+          Alert.alert('Session Completed', 'The session has been marked as completed.');
+        } catch (error) {
+          console.error('Error completing session:', error);
+          Alert.alert('Error', `Failed to complete session: ${error.message}`);
+        }
+      }
+    } else {
+      // First person marks as complete - status becomes 'completed-pending'
+      const confirmed = window.confirm('Are you sure you want to mark this session as complete? The other party will need to confirm.');
+      console.log('Initial confirmation:', confirmed);
+      
+      if (confirmed) {
+        try {
+          console.log('Sending completion request to:', `${API_URL}/api/sessions/${sessionId}/status`);
+          
+          const response = await fetchWithTimeout(`${API_URL}/api/sessions/${sessionId}/status`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              status: 'completed-pending',
+              userId: user?.id,
+              userRole: user?.role
+            }),
+          });
+          
+          console.log('Response status:', response.status);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error response:', errorText);
+            throw new Error(errorText || `Failed to mark session: ${response.status}`);
+          }
+          
+          const updatedSession = await response.json();
+          console.log('Session marked as pending completion:', updatedSession);
+          
+          setSession(prevSession => ({ 
+            ...prevSession, 
+            status: 'completed-pending' 
+          }));
+          
+          Alert.alert('Pending Confirmation', 'Your session completion has been submitted. Waiting for the other party to confirm.');
+        } catch (error) {
+          console.error('Error marking session:', error);
+          Alert.alert('Error', `Failed to mark session: ${error.message}`);
+        }
+      }
+    }
   };
 
   if (loading) {
@@ -344,13 +396,14 @@ export default function SessionDetails({ route, navigation }) {
       </View>
 
       {/* Video call button for active sessions */}
-      {session.status === 'approved' && session.meetingUrl && (
+      {session.meetingUrl && (
         <TouchableOpacity 
-          style={styles.joinMeetingButton}
-          onPress={handleJoinMeeting}
+          style={[styles.joinMeetingButton, session.status === 'completed' && styles.disabledButton]}
+          onPress={session.status === 'completed' ? null : handleJoinMeeting}
+          disabled={session.status === 'completed'}
         >
-          <Ionicons name="videocam" size={24} color="white" />
-          <Text style={styles.joinMeetingText}>Join Video Meeting</Text>
+          <Ionicons name="videocam" size={24} color={session.status === 'completed' ? '#999' : 'white'} />
+          <Text style={[styles.joinMeetingText, session.status === 'completed' && styles.disabledButtonText]}>Join Video Meeting</Text>
         </TouchableOpacity>
       )}
 
@@ -473,13 +526,27 @@ export default function SessionDetails({ route, navigation }) {
         )}
         
         {/* Complete button for approved sessions (mentor only) */}
-        {session.status === 'approved' && user?.role === 'mentor' && (
+        {(session.status === 'approved' || session.status === 'completed-pending') && user?.role === 'mentor' && (
           <TouchableOpacity 
             style={[styles.actionButton, styles.completeButton]}
             onPress={handleCompleteSession}
           >
             <Ionicons name="checkmark-circle-outline" size={20} color="white" />
-            <Text style={styles.completeButtonText}>Mark as Complete</Text>
+            <Text style={styles.completeButtonText}>
+              {session.status === 'completed-pending' ? 'Confirm Completion' : 'Mark as Complete'}
+            </Text>
+          </TouchableOpacity>
+        )}
+        
+        {/* Cancel button - disabled when completed */}
+        {(session.status === 'approved' || session.status === 'pending_approval') && (
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.cancelButton, session.status === 'completed' && styles.disabledButton]}
+            onPress={session.status === 'completed' ? null : handleCancelSession}
+            disabled={session.status === 'completed'}
+          >
+            <Ionicons name="close-circle-outline" size={20} color={session.status === 'completed' ? '#999' : '#f44336'} />
+            <Text style={[styles.cancelButtonText, session.status === 'completed' && styles.disabledButtonText]}>Cancel Session</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -735,5 +802,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 8,
+  },
+  disabledButton: {
+    backgroundColor: '#e0e0e0',
+    opacity: 0.6,
+  },
+  disabledButtonText: {
+    color: '#999',
   },
 });
